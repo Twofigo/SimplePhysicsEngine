@@ -6,8 +6,7 @@ function setup()
 	game.init();
 	
 	var geo = new Polygon();
-	geo.angle = 0;
-	geo.points = [
+	geo.vertices = [
 	{x:-14,y:20},
 	{x:14,y:20},
 	{x:20,y:0},
@@ -16,91 +15,73 @@ function setup()
 	{x:-20,y:0},
 	];
 	var obj = new RigidBody()
-	obj.position.x=0;
-	obj.position.y=0; 
 	obj.geometry = geo;
-	obj.surfaceColor = "green";
-	obj.velocity.x = 0;
-	obj.velocity.y = 0;
-	obj.angularVelocity = 2;
+	obj.setPosition(0,0,0);
+	obj.setVelocity(0,0,2);
+	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	
 	var geo = new Polygon();
-	geo.angle = 0;
-	geo.points = [
+	geo.vertices = [
 	{x:-20,y:-20},
 	{x:-20,y:20},
 	{x:20,y:20},
 	{x:20,y:-20},
 	];
 	var obj = new RigidBody()
-	obj.position.x=200;
-	obj.position.y=0; 
 	obj.geometry = geo;
-	obj.surfaceColor = "red";
-	obj.velocity.x = -50;
-	obj.velocity.y = 0;
-	obj.angularVelocity = 1;
+	obj.setPosition(200,0,0);
+	obj.setVelocity(-50,0,1);
+	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	
 	
+	// floor;
 	var geo = new Polygon();
-	geo.points = [
-	{x:-800,y:0},
-	{x:800,y:0},
+	geo.vertices = [
+	{x:-800,y:-100},
+	{x:800,y:-100},
 	{x:800,y:100},
 	{x:-800,y:100},
 	];
-	var obj = new StaticBody();
-	obj.position.x=0;
-	obj.position.y=300; 
-	obj.geometry = geo;
-	obj.surfaceColor = "blue";
-	game.world.staticBodies.push(obj)
 	
-	var geo = new Polygon();
-	geo.points = [
-	{x:-800,y:0},
-	{x:800,y:0},
-	{x:800,y:100},
-	{x:-800,y:100},
-	];
-	var obj = new StaticBody();
-	obj.position.x=0;
-	obj.position.y=-400; 
+	var obj = new RigidBody();
+	obj.geometry = geo.clone();
+	obj.setPosition(0,400);
+	obj.stationary=true;
+	game.world.rigidBodies.push(obj)
+
+	// roof
+	var obj = new RigidBody();
 	obj.geometry = geo;
-	obj.surfaceColor = "blue";
-	game.world.staticBodies.push(obj)
+	obj.setPosition(0,-400);
+	obj.stationary=true;
+	game.world.rigidBodies.push(obj)
 	
+	// left wall
 	var geo = new Polygon();
-	geo.points = [
+	geo.vertices = [
 	{x:-100,y:-800},
 	{x:100,y:-800},
 	{x:100,y:800},
 	{x:-100,y:800},
 	];
-	var obj = new StaticBody();
-	obj.position.x=-500;
-	obj.position.y=0; 
-	obj.geometry = geo;
-	obj.surfaceColor = "blue";
-	game.world.staticBodies.push(obj)
+	var obj = new RigidBody();
+	obj.geometry = geo.clone();
+	obj.setPosition(-500,0); 
+	obj.stationary=true;
+	game.world.rigidBodies.push(obj)
 	
-	var geo = new Polygon();
-	geo.points = [
-	{x:-100,y:-800},
-	{x:100,y:-800},
-	{x:100,y:800},
-	{x:-100,y:800},
-	];
-	var obj = new StaticBody();
-	obj.position.x=500;
-	obj.position.y=0; 
+	// right wall
+	var obj = new RigidBody();
 	obj.geometry = geo;
-	obj.surfaceColor = "blue";
-	game.world.staticBodies.push(obj)
+	obj.setPosition(500,0);
+	obj.stationary=true;
+	game.world.rigidBodies.push(obj)
 	
 	compileGeometry();
+	
+	game.world.gravity.y=300;
 	
 	window.requestAnimationFrame(mainloop);
 }
@@ -114,11 +95,11 @@ function compileGeometry()
 	}
 }
 
-function mainloop(_timestamp)
+function mainloop(timestamp)
 {
-	if (game.timestamp === false) game.timestamp = _timestamp;
-	var timeDelta = _timestamp - game.timestamp;
-	game.timestamp = _timestamp;
+	if (game.timestamp === false) game.timestamp = timestamp;
+	var timeDelta = timestamp - game.timestamp;
+	game.timestamp = timestamp;
 	
 	if (timeDelta>50)timeDelta=6;
 	
@@ -131,20 +112,28 @@ function mainloop(_timestamp)
 	window.requestAnimationFrame(mainloop)
 }
 
-function updateForeground(_time)
+function updateForeground(time)
 {
-	if (!_time) return;
+	if (!time) return;
 	
 	for(let obj of game.world.rigidBodies)
 	{
-		obj.update(_time);
+		obj.update(time);
 	}
 	
 	// collide others
 	for (let k1=0; k1<game.world.rigidBodies.length; k1++)
 	{
+		let objA = game.world.rigidBodies[k1];
+		if (objA.ghost) continue;
 		for (let k2=k1+1; k2<game.world.rigidBodies.length; k2++)
 		{
+			let objB = game.world.rigidBodies[k2];
+			
+			if (objB.ghost) continue;
+			if (objA.stationary && objB.stationary) continue;
+			if (!(objA.moving || objB.moving)) continue;
+			
 			var collision = testPolygonPolygon(
 			game.world.rigidBodies[k1],
 			game.world.rigidBodies[k2]
@@ -152,40 +141,28 @@ function updateForeground(_time)
 			
 			if (collision)
 			{
+				if (!objA.collidable) continue;
+				if (!objB.collidable) continue;
 				collision.resolveCollision();
 				collision.correctCollision();
 			}
 		}		
 	}
-	
-	// collide world
-	for(let obj1 of game.world.rigidBodies)
-	{
-		for(let obj2 of game.world.staticBodies)
-		{
-			var collision = testPolygonPolygon(
-			obj1,
-			obj2
-			);
-			
-			if (collision)
-			{
-				collision.resolveCollision();
-				collision.correctCollision();
-			}
-		}
-	}
 }
-function updateBackground(_time)
+function updateBackground(time)
 {
-	if (!_time) return;
+	if (!time) return;
 }
 function drawForeground()
 {
 	game.ctx.clearRect(-game.canvas.width/2, -game.canvas.height/2, game.canvas.width, game.canvas.height);
-	for(obj of game.world.rigidBodies.concat(game.world.staticBodies))
+	for(obj of game.world.enteties)
 	{
 		obj.draw();
+	}
+	for(obj of game.world.rigidBodies)
+	{
+		obj.geometry.draw();
 	}
 }
 function drawBackground()

@@ -43,10 +43,10 @@ World
 Vector2D
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
-Vector2D.prototype.copy = function(_vector)
+Vector2D.prototype.copy = function(vector)
 {
-	this.x = _vector.x;
-	this.y = _vector.y;
+	this.x = vector.x;
+	this.y = vector.y;
 	
 	return this;	
 }
@@ -55,41 +55,41 @@ Vector2D.prototype.clone = function()
 	return new Vector2D(this.x, this.y);
 }
 
-Vector2D.prototype.add = function(_vector) 
+Vector2D.prototype.add = function(vector) 
 {
-	this.x += _vector.x;
-	this.y += _vector.y;
+	this.x += vector.x;
+	this.y += vector.y;
 
 	return this;
 }
-Vector2D.prototype.subtract = function(_vector) 
+Vector2D.prototype.subtract = function(vector) 
 {
-	this.x -= _vector.x;
-	this.y -= _vector.y;
+	this.x -= vector.x;
+	this.y -= vector.y;
 
 	return this;
 }
-Vector2D.prototype.scale = function(_x,_y) 
+Vector2D.prototype.scale = function(x,y) 
 {
-	this.x *= _x;
-	this.y *= _y || _x;
+	this.x *= x;
+	this.y *= y || x;
 	
 	return this;
 }
 
-Vector2D.prototype.project = function(_vector) 
+Vector2D.prototype.project = function(vector) 
 {
-    var c = this.dotProduct(_vector) / _vector.squareLength();
-    this.x = c * _vector.x;
-    this.y = c * _vector.y;
+    var c = this.dotProduct(vector) / vector.squareLength();
+    this.x = c * vector.x;
+    this.y = c * vector.y;
 	
     return this;
 }
-Vector2D.prototype.reflect = function(_axis)
+Vector2D.prototype.reflect = function(axis)
 {
 	var x = this.x;
 	var y = this.y;
-	this.project(_axis).scale(2);
+	this.project(axis).scale(2);
 	this.x -= x;
 	this.y -= y;
 	
@@ -113,14 +113,14 @@ Vector2D.prototype.normalize = function()
 	
 	return this;
 }
-Vector2D.prototype.dotProduct = function(_vector)
+Vector2D.prototype.dotProduct = function(vector)
 {
-	return this.x * _vector.x + this.y * _vector.y;
+	return this.x * vector.x + this.y * vector.y;
 }
-Vector2D.prototype.rotate = function(_angle) 
+Vector2D.prototype.rotate = function(angle) 
 {
-	var s = Math.sin(_angle);
-	var c = Math.cos(_angle);	
+	var s = Math.sin(angle);
+	var c = Math.cos(angle);	
 	var x = this.x;
 	var y = this.y;
 	
@@ -146,62 +146,27 @@ Vector2D.prototype.length = function()
 {
 	return Math.sqrt(this.squareLength());
 }
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Polygon
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
-Polygon.prototype.getVertices = function*()
-{	
-	for(let p of this.points)
-	{
-		yield (new Vector2D()).copy(p);
-	}
-}
 
-Polygon.prototype.getSurfaces = function*()
-{
-	var surface = new Surface();
-	surface.pointA=false;
-	surface.pointB=false;
-	var startPoint=	false;
-	
-	for(let p of this.getVertices())
-	{
-		if (surface.pointB===false)
-		{
-			startPoint = p;
-			surface.pointB = p;
-			continue;			
-		}	
-		surface.pointA = surface.pointB;
-		surface.pointB = p;
-		yield surface.clone();
-	}
-	surface.pointA = surface.pointB;
-	surface.pointB = startPoint;
-	yield surface.clone();
-}
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Surface
+Line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
-Surface.prototype.clone = function()
+Line.prototype.clone = function()
 {
-	return new Surface(this.pointA, this.pointB);
+	return new Line(this.pointA.clone(), this.pointB.clone());
 }
-Surface.prototype.intersect = function(_surface)
+Line.prototype.intersect = function(line)
 {	
 	var cordinate = new Vector2D();
 		
     var s1_x = this.pointB.x - this.pointA.x;     
 	var s1_y = this.pointB.y - this.pointA.y;   
-    var s2_x = _surface.pointB.x - _surface.pointA.x;     
-	var s2_y = _surface.pointB.y - _surface.pointA.y;  
+    var s2_x = line.pointB.x - line.pointA.x;     
+	var s2_y = line.pointB.y - line.pointA.y;  
 
-	var xDiff = this.pointA.x - _surface.pointA.x;
-	var yDiff = this.pointA.y - _surface.pointA.y;
+	var xDiff = this.pointA.x - line.pointA.x;
+	var yDiff = this.pointA.y - line.pointA.y;
 	
     var s = (s1_x*yDiff - s1_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
     var t = (s2_x*yDiff - s2_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
@@ -217,25 +182,217 @@ Surface.prototype.intersect = function(_surface)
 }
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Entity
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/
+Entity.prototype.clone = function()
+{	
+	return obj = new Entity(this.position.clone(), this.angle);
+}
+Entity.prototype.draw = function()
+{	
+	return;
+}
+Entity.prototype.setPosition = function(x, y, angle)
+{	
+	if (x=='undefined' || y=='undefined') return;
+	
+	this.position.x = x;
+	this.position.y = y;
+	this.angle = angle || 0;
+}
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Polygon
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/
+Polygon.prototype.clone = function()
+{	
+	var obj = new Polygon(this.position.clone(), this.angle);
+	for(let vertex of this.getVertices())
+	{
+		obj.vertices.push(vertex);
+	}
+	return obj;
+}
+
+Polygon.prototype.getVertices = function*()
+{	
+	for(let vertex of this.vertices)
+	{
+		yield (new Vector2D()).copy(vertex);
+	}
+}
+
+Polygon.prototype.getEdges = function*()
+{
+	var line = new Line();
+	line.pointA=false;
+	line.pointB=false;
+	var startPoint=	false;
+	
+	for(let vertex of this.getVertices())
+	{
+		if (line.pointB===false)
+		{
+			startPoint = vertex;
+			line.pointB = vertex;
+			continue;			
+		}	
+		line.pointA = line.pointB;
+		line.pointB = vertex;
+		yield line.clone();
+	}
+	line.pointA = line.pointB;
+	line.pointB = startPoint;
+	yield line.clone();
+}
+
+Polygon.prototype.getAbsVertices = function*()
+{	
+	for(let vertex of this.getVertices())
+	{
+		vertex.rotate(this.angle);
+		vertex.add(this.position);
+		yield vertex;
+	}
+}
+Polygon.prototype.getAbsEdges = function*()
+{
+	for(let line of this.getEdges())
+	{
+		line.pointA.rotate(this.angle);
+		line.pointA.add(this.position);
+		line.pointB.rotate(this.angle);
+		line.pointB.add(this.position);
+		
+		yield line.clone();
+	}
+}
+
+Polygon.prototype.draw = function()
+{
+	game.ctx.beginPath();
+	for(let cordinate of this.getAbsVertices())
+	{
+		game.ctx.lineTo(cordinate.x * game.zoom, cordinate.y * game.zoom)
+	}
+	game.ctx.fillStyle = this.graphicsData.surfaceColor;
+	game.ctx.fill();
+	
+	// center of mass
+	game.ctx.beginPath();
+	game.ctx.fillStyle="#FFFFFF";
+	game.ctx.fillRect((this.position.x-1)*game.zoom, (this.position.y-1)*game.zoom, 2*game.zoom, 2*game.zoom);
+	game.ctx.fill();
+	
+	Entity.prototype.draw.call(this);
+}
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+RigidBody
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+*/
+RigidBody.prototype.update = function(time)
+{	
+	if (this.stationary) return;
+	if (this.velocity.length()+this.angularVelocity<0.05)
+	{
+		this.moving = false;
+		return;
+	}
+	
+	this.moving = true
+
+	var t = time / 1000;
+	this.geometry.position.add(this.velocity.clone().scale(t));
+	if (this.gravity) this.geometry.position.add(game.world.gravity.clone().scale(t * t * 0.5));
+	
+	this.geometry.angle -= this.angularVelocity * t;
+	if (this.geometry.angle > 2*Math.PI) this.geometry.angle-=2*Math.PI;
+	if (this.geometry.angle < 0) this.geometry.angle+=2*Math.PI;
+	
+	if (this.gravity) this.velocity.add(game.world.gravity.clone().scale(t));
+}
+RigidBody.prototype.setPosition = function(x, y, angle)
+{
+	this.geometry.setPosition(x,y, angle);
+}
+RigidBody.prototype.setVelocity = function(vx, vy, angularVelocity)
+{
+	if (vx=='undefined' || vy=='undefined') return;
+	if (this.stationary) return;
+		
+	this.velocity.x		= vx;
+	this.velocity.y		= vy;
+	this.angularVelocity= angularVelocity || 0;
+}
+RigidBody.prototype.getImpulse = function(coordinate)
+{
+	if (this.ghost) return new Vector2D();
+	if (!this.collidable) return new Vector2D();
+	if (this.stationary) return new Vector2D();
+		
+	var point = coordinate.clone(
+	).subtract(this.geometry.position);
+	
+	var vector = this.velocity.clone(
+	).scale(this.mass);
+	
+	var radius = point.length();
+	
+	vector.add(point.normalize(
+	).scale(this.angularVelocity * this.inertia /10
+	).perp()
+	);
+	
+	return vector;
+}
+RigidBody.prototype.applyImpulse = function(coordinate, impulse)
+{
+	if (this.ghost) return;
+	if (!this.collidable) return;
+	if (this.stationary) return;
+	
+	var point = coordinate.clone(
+	).subtract(this.geometry.position);
+	
+	var vector1 = impulse.clone();
+	
+	var vector2 = vector1.clone();
+	
+	vector1.project(point);
+	vector2.subtract(vector1);
+	
+	vector1.scale(1/this.mass);
+	this.velocity.add(vector1)
+	
+	var momentum = vector2.length();
+	
+	if (point.x * impulse.y < 0)momentum = -momentum;
+	else if (impulse.y==0)
+		if (point.y * impulse.x > 0)momentum = -momentum;
+	
+	this.angularVelocity -= 10*momentum / this.inertia;
+}
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Collision
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
 Collision.prototype.resolveCollision = function()
 {
-	
 	var vector1;
 	var vector2;
 	
-	if (typeof(this.objA.getForceInPoint) !== 'undefined') vector1 = this.objA.getForceInPoint(this.point);
-	else vector1 = new Vector2D();
-	if (typeof(this.objB.getForceInPoint) !== 'undefined') vector2 = this.objB.getForceInPoint(this.point);
-	else vector2 = new Vector2D();
+	vectorA = this.objA.getImpulse(this.point);
+	vectorB = this.objB.getImpulse(this.point);
 	
-	var newVector1 = vector2.clone().subtract(vector1);
-	var newVector2 = vector1.clone().subtract(vector2);
+	var newVectorA = vectorB.clone().subtract(vectorA);
+	var newVectorB = vectorA.clone().subtract(vectorB);
 	
-	if (typeof(this.objA.addForceInPoint) !== 'undefined') this.objA.addForceInPoint(this.point, newVector1);
-	if (typeof(this.objB.addForceInPoint) !== 'undefined') this.objB.addForceInPoint(this.point, newVector2);
+	this.objA.applyImpulse(this.point, newVectorA);
+	this.objB.applyImpulse(this.point, newVectorB);
 }
 
 Collision.prototype.correctCollision = function()
@@ -255,128 +412,12 @@ Collision.prototype.correctCollision = function()
 	
 	if (this.offsetA)
 	{
-		this.objA.position.add(this.offsetA.scale(percent));
+		this.objA.geometry.position.add(this.offsetA.scale(percent));
 	}
 	if (this.offsetB)
 	{
-		this.objB.position.add(this.offsetB.scale(percent));
+		this.objB.geometry.position.add(this.offsetB.scale(percent));
 	}
-}
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-StaticBody
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
-StaticBody.prototype.draw = function()
-{
-	game.ctx.beginPath();
-	for(let cordinate of this.getVertices())
-	{
-		game.ctx.lineTo(cordinate.x * game.zoom, cordinate.y * game.zoom)
-	}
-	game.ctx.fillStyle = this.surfaceColor;
-	game.ctx.fill();
-	
-	
-	// center of mass and rotation
-	game.ctx.beginPath();
-	game.ctx.fillStyle="#FFFFFF";
-	game.ctx.fillRect((this.position.x-1)*game.zoom, (this.position.y-1)*game.zoom, 2*game.zoom, 2*game.zoom);
-	game.ctx.fill();
-}
-StaticBody.prototype.getVertices = function*()
-{	
-	for(let p of this.geometry.getVertices())
-	{
-		let result = new Vector2D(p.x, p.y);
-		result.rotate(this.angle);
-		result.add(this.position);
-		yield result;
-	}
-}
-
-StaticBody.prototype.getSurfaces = function*()
-{
-	var surface = new Surface();
-	surface.pointA=false;
-	surface.pointB=false;
-	var startPoint=	false;
-	
-	for(let p of this.getVertices())
-	{
-		if (surface.pointB===false)
-		{
-			startPoint = p;
-			surface.pointB = p;
-			continue;			
-		}	
-		surface.pointA = surface.pointB;
-		surface.pointB = p;
-		yield surface.clone();
-	}
-	surface.pointA = surface.pointB;
-	surface.pointB = startPoint;
-	yield surface.clone();
-}
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-RigidBody
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-*/
-RigidBody.prototype.update = function(_time)
-{	
-	var t = _time / 1000;
-	this.position.x += this.velocity.x * t;
-	this.position.y += this.velocity.y * t;
-	this.position.y += game.world.gravityStrength * t * t * 0.5;
-	
-	this.angle -= this.angularVelocity * t;
-	if (this.angle > 2*Math.PI) this.angle-=2*Math.PI;
-	if (this.angle < 0) this.angle+=2*Math.PI;
-	
-	this.velocity.y += game.world.gravityStrength * t;
-}
-
-RigidBody.prototype.getForceInPoint = function(_coordinate)
-{
-	var point = _coordinate.clone(
-	).subtract(this.position);
-	
-	var vector = this.velocity.clone(
-	).scale(this.mass);
-	
-	var radius = point.length();
-	
-	vector.add(point.normalize(
-	).scale(this.angularVelocity * this.inertia /10
-	).perp()
-	);
-	
-	return vector;
-}
-RigidBody.prototype.addForceInPoint = function(_coordinate, _vector)
-{
-	var point = _coordinate.clone(
-	).subtract(this.position);
-	
-	var vector1 = _vector.clone();
-	
-	var vector2 = vector1.clone();
-	
-	vector1.project(point);
-	vector2.subtract(vector1);
-	
-	vector1.scale(1/this.mass);
-	this.velocity.add(vector1)
-	
-	var momentum = vector2.length();
-	
-	
-	if (point.x * _vector.y < 0)momentum = -momentum;
-	else if (_vector.y==0)
-		if (point.y * _vector.x > 0)momentum = -momentum;
-	
-	this.angularVelocity -= 10*momentum / this.inertia;
 }
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -385,17 +426,17 @@ Helper function
 */
 
 
-function testPolygonPolygon(_bodyA, _bodyB)
+function testPolygonPolygon(bodyA, bodyB)
 {	
 	var pointA = false;
 	var pointB = false;
 	
 	main:
-	for(let surfaceA of _bodyA.getSurfaces())
+	for(let lineA of bodyA.geometry.getAbsEdges())
 	{
-		for(let surfaceB of _bodyB.getSurfaces())
+		for(let lineB of bodyB.geometry.getAbsEdges())
 		{
-			let cordinate = surfaceA.intersect(surfaceB);
+			let cordinate = lineA.intersect(lineB);
 			if (cordinate) 
 			{
 				if (!pointA)pointA = cordinate
@@ -411,8 +452,8 @@ function testPolygonPolygon(_bodyA, _bodyB)
 	if (!pointA)return false;
 	
 	var collision = new Collision();
-	collision.objA = _bodyA;
-	collision.objB = _bodyB;
+	collision.objA = bodyA;
+	collision.objB = bodyB;
 	
 	collision.normal = pointB.clone(
 	).subtract(pointA
@@ -423,27 +464,27 @@ function testPolygonPolygon(_bodyA, _bodyB)
 	).add(pointB
 	).scale(0.5);
 	
-	collision.offsetA = findOffset(_bodyA, pointA, collision.normal);
+	collision.offsetA = findOffset(bodyA.geometry, pointA, collision.normal);
 
-	collision.offsetB = findOffset(_bodyB, pointA, collision.normal);
+	collision.offsetB = findOffset(bodyB.geometry, pointA, collision.normal);
 	
 	return collision;
 }
 
-function findOffset(_obj, _orgin, _normal)
+function findOffset(geometry, orgin, normal)
 {
 	var offset = false;
 	
 	var center = (new Vector2D()
-	).copy(_obj.position
-	).subtract(_orgin
-	).project(_normal);
+	).copy(geometry.position
+	).subtract(orgin
+	).project(normal);
 
-	for(let vertex of _obj.getVertices())
+	for(let vertex of geometry.getAbsVertices())
 	{
 		let v = vertex.clone(
-		).subtract(_orgin
-		).project(_normal);
+		).subtract(orgin
+		).project(normal);
 		
 		if (v.x * center.x >=0 && v.y * center.y >=0) continue;
 		if (!(offset) || offset.squareLength() < v.squareLength()) offset = v;
@@ -453,26 +494,26 @@ function findOffset(_obj, _orgin, _normal)
 	return false
 }
 
-function compilePolygon(_body)
+function compilePolygon(body)
 {
-	_body.mass			= 0;
-	_body.inertia 		= 0;
-	_body.surfaceArea	= 0;
+	body.mass			= 0;
+	body.inertia 		= 0;
+	body.surfaceArea	= 0;
 	var originOffset = new Vector2D();
-	for( surface of _body.geometry.getSurfaces() )
+	for( line of body.geometry.getEdges() )
 	{
 		// relative cordinate !!!
 		
-		let v = surface.pointB.clone(
-		).subtract(surface.pointA);
+		let v = line.pointB.clone(
+		).subtract(line.pointA);
 		
 		let b = v.length();
 		
-		let a = surface.pointA.clone(
+		let a = line.pointA.clone(
 		).project(v
 		).length();
 		
-		let h = surface.pointA.clone(
+		let h = line.pointA.clone(
 		).project(v.perp()
 		).length();
 		
@@ -480,30 +521,30 @@ function compilePolygon(_body)
 		let inertia = ( (b*b*b)*h - (b*b)*h*a + b*h*(a*a) + b*(h*h*h) ) / 36 
 		
 		let center = new Vector2D(); 
-		center.x = ( surface.pointA.x + surface.pointB.x ) / 3;
-		center.y = ( surface.pointA.y + surface.pointB.y ) / 3;
+		center.x = ( line.pointA.x + line.pointB.x ) / 3;
+		center.y = ( line.pointA.y + line.pointB.y ) / 3;
 		
 		let d = center.length();
 		
-		_body.mass			+= _body.density*surfaceArea;
-		_body.inertia		+= _body.density*surfaceArea * (d*d) + inertia;
-		_body.surfaceArea	+= surfaceArea;
+		body.mass			+= body.density*surfaceArea;
+		body.inertia		+= body.density*surfaceArea * (d*d) + inertia;
+		body.surfaceArea	+= surfaceArea;
 		originOffset.add(center);
 	}
 	
-	_body.inv_mass	= 1/_body.mass;
+	body.inv_mass	= 1/body.mass;
 	
-	console.log("color: "+_body.surfaceColor);
-	console.log("mass: "+_body.mass);
-	console.log("inertia: "+_body.inertia);
-	console.log("area: "+_body.surfaceArea);
+	console.log("color: "+body.geometry.graphicsData.surfaceColor);
+	console.log("mass: "+body.mass);
+	console.log("inertia: "+body.inertia);
+	console.log("area: "+body.surfaceArea);
 	
 	// cheat
 	
-	for( p of _body.geometry.points)
+	for( vertex of body.geometry.vertices)
 	{
-		p.x += originOffset.x;
-		p.y += originOffset.y;
+		vertex.x += originOffset.x;
+		vertex.y += originOffset.y;
 	}
 	
 	
@@ -511,8 +552,8 @@ function compilePolygon(_body)
 	game.ctx.beginPath();
 	game.ctx.fillStyle="black";
 	game.ctx.fillRect(
-	originOffset.x + _body.position.x - 2
-	originOffset.y + _body.position.y - 2
+	originOffset.x + body.position.x - 2
+	originOffset.y + body.position.y - 2
 	4,4);
 	game.ctx.fill();
 	*/
