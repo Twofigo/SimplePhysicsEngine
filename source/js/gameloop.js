@@ -31,7 +31,7 @@ function setup()
 	var obj = new RigidBody()
 	obj.geometry = geo;
 	obj.setPosition(200,0,0);
-	obj.setVelocity(-50,0,1);
+	obj.setVelocity(-200,0,1);
 	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	

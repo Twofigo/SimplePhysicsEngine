@@ -296,23 +296,29 @@ RigidBody
 RigidBody.prototype.update = function(time)
 {	
 	if (this.stationary) return;
-	if (this.velocity.length()+this.angularVelocity<0.05)
+	if (this.velocity.length()+this.angularVelocity==0)
 	{
 		this.moving = false;
 		return;
 	}
-	
 	this.moving = true
 
+	if (this.gravity) this.force.add(game.world.gravity.clone().scale(this.mass));
+	
 	var t = time / 1000;
 	this.geometry.position.add(this.velocity.clone().scale(t));
-	if (this.gravity) this.geometry.position.add(game.world.gravity.clone().scale(t * t * 0.5));
+	this.geometry.position.add(this.force.clone().scale(t * t * 0.5/this.mass));
 	
-	this.geometry.angle -= this.angularVelocity * t;
+	this.geometry.angle -= this.angularVelocity * t * 2*Math.PI;
+	this.geometry.angle -= this.torque * t * t * 0.5/this.inertia;
 	if (this.geometry.angle > 2*Math.PI) this.geometry.angle-=2*Math.PI;
 	if (this.geometry.angle < 0) this.geometry.angle+=2*Math.PI;
 	
-	if (this.gravity) this.velocity.add(game.world.gravity.clone().scale(t));
+	this.velocity.add(this.force.scale(t/this.mass));
+	this.angularVelocity + this.torque/this.inertia;
+	
+	this.force.scale(0);
+	this.torque = 0;
 }
 RigidBody.prototype.setPosition = function(x, y, angle)
 {
@@ -333,16 +339,16 @@ RigidBody.prototype.getImpulse = function(coordinate)
 	if (!this.collidable) return new Vector2D();
 	if (this.stationary) return new Vector2D();
 		
-	var point = coordinate.clone(
+	var normal = coordinate.clone(
 	).subtract(this.geometry.position);
+	var radius = normal.length();
+	normal.normalize();
 	
 	var vector = this.velocity.clone(
 	).scale(this.mass);
 	
-	var radius = point.length();
-	
-	vector.add(point.normalize(
-	).scale(this.angularVelocity * this.inertia /10
+	vector.add(normal.clone(
+	).scale(this.angularVelocity * this.inertia
 	).perp()
 	);
 	
@@ -354,26 +360,73 @@ RigidBody.prototype.applyImpulse = function(coordinate, impulse)
 	if (!this.collidable) return;
 	if (this.stationary) return;
 	
-	var point = coordinate.clone(
+	var normal = coordinate.clone(
 	).subtract(this.geometry.position);
+	var radius = normal.length();
+	normal.normalize();
 	
 	var vector1 = impulse.clone();
+	vector1.project(normal);
 	
-	var vector2 = vector1.clone();
-	
-	vector1.project(point);
+	var vector2 = impulse.clone();
 	vector2.subtract(vector1);
 	
 	vector1.scale(1/this.mass);
 	this.velocity.add(vector1)
 	
-	var momentum = vector2.length();
+	var angular = vector2.length();
 	
-	if (point.x * impulse.y < 0)momentum = -momentum;
+	if (normal.x * impulse.y < 0)angular = -angular;
 	else if (impulse.y==0)
-		if (point.y * impulse.x > 0)momentum = -momentum;
+		if (normal.y * impulse.x > 0)angular = -angular;
 	
-	this.angularVelocity -= 10*momentum / this.inertia;
+	this.angularVelocity -= angular / this.inertia;
+}
+
+RigidBody.prototype.getForce = function(coordinate)
+{
+	if (this.stationary) return new Vector2D();
+		
+	var normal = coordinate.clone(
+	).subtract(this.geometry.position);
+	var radius = normal.length();
+	normal.normalize();
+	
+	var vector = this.force.clone();
+	
+	vector.add(normal.clone(
+	).scale(this.torque / radius
+	).perp()
+	);
+	
+	if (this.gravity)vector.add(game.world.gravity.clone().scale(this.mass));
+	
+	return vector;
+}
+RigidBody.prototype.applyForce = function(coordinate, force)
+{
+	if (this.stationary) return;
+	
+	var normal = coordinate.clone(
+	).subtract(this.geometry.position);
+	var radius = normal.length();
+	normal.normalize();
+	
+	var vector1 = force.clone();
+	vector1.project(normal);
+	
+	var vector2 = force.clone();
+	vector2.subtract(vector1);
+	
+	this.force.add(vector1)
+	
+	var angular = vector2.length();
+	
+	if (normal.x * force.y < 0)angular = -angular;
+	else if (force.y==0)
+		if (normal.y * force.x > 0)angular = -angular;
+	
+	this.torque -= angular * radius;
 }
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -382,22 +435,22 @@ Collision
 */
 Collision.prototype.resolveCollision = function()
 {
-	var vector1;
-	var vector2;
-	
-	vectorA = this.objA.getImpulse(this.point);
-	vectorB = this.objB.getImpulse(this.point);
+	var vectorA = this.objA.getImpulse(this.point);
+	var vectorB = this.objB.getImpulse(this.point);
 	
 	var newVectorA = vectorB.clone().subtract(vectorA);
 	var newVectorB = vectorA.clone().subtract(vectorB);
 	
 	this.objA.applyImpulse(this.point, newVectorA);
 	this.objB.applyImpulse(this.point, newVectorB);
+	
+	this.objA.applyForce(this.point, this.objA.getForce(this.point).reverse());
+	this.objB.applyForce(this.point, this.objB.getForce(this.point).reverse());
 }
 
 Collision.prototype.correctCollision = function()
 {
-	const percent = 1;
+	const percent = 0.2;
 	const slop = 0.01;
 	
 	var v = this.normal.clone()
