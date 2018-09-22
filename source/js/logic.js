@@ -315,7 +315,7 @@ RigidBody.prototype.update = function(time)
 	if (this.geometry.angle < 0) this.geometry.angle+=2*Math.PI;
 	
 	this.velocity.add(this.force.scale(t/this.mass));
-	this.angularVelocity + this.torque/this.inertia;
+	this.angularVelocity += this.torque/this.inertia;
 	
 	this.force.scale(0);
 	this.torque = 0;
@@ -444,8 +444,8 @@ Collision.prototype.resolveCollision = function()
 	this.objA.applyImpulse(this.point, newVectorA);
 	this.objB.applyImpulse(this.point, newVectorB);
 	
-	this.objA.applyForce(this.point, this.objA.getForce(this.point).reverse());
-	this.objB.applyForce(this.point, this.objB.getForce(this.point).reverse());
+	this.objA.applyForce(this.point, this.objA.getForce(this.point).project(this.normal).reverse());
+	this.objB.applyForce(this.point, this.objB.getForce(this.point).project(this.normal).reverse());
 }
 
 Collision.prototype.correctCollision = function()
