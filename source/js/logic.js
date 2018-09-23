@@ -79,7 +79,7 @@ Vector2D.prototype.scale = function(x,y)
 
 Vector2D.prototype.project = function(vector) 
 {
-    var c = this.dotProduct(vector) / vector.squareLength();
+    var c = this.dot(vector) / vector.squareLength();
     this.x = c * vector.x;
     this.y = c * vector.y;
 	
@@ -113,7 +113,7 @@ Vector2D.prototype.normalize = function()
 	
 	return this;
 }
-Vector2D.prototype.dotProduct = function(vector)
+Vector2D.prototype.dot = function(vector)
 {
 	return this.x * vector.x + this.y * vector.y;
 }
@@ -140,7 +140,7 @@ Vector2D.prototype.perp = function()
 
 Vector2D.prototype.squareLength = function() 
 {
-	return this.dotProduct(this);
+	return this.dot(this);
 }
 Vector2D.prototype.length = function()
 {
@@ -301,21 +301,25 @@ RigidBody.prototype.update = function(time)
 		this.moving = false;
 		return;
 	}
-	this.moving = true
-
+	this.moving = true;
+	var t = time / 1000;
+	
 	if (this.gravity) this.force.add(game.world.gravity.clone().scale(this.mass));
 	
-	var t = time / 1000;
-	this.geometry.position.add(this.velocity.clone().scale(t));
-	this.geometry.position.add(this.force.clone().scale(t * t * 0.5/this.mass));
+	var accelleration = this.force.scale(t/this.mass);
+	var angularAccelleration = this.torque/this.inertia;
 	
-	this.geometry.angle -= this.angularVelocity * t * 2*Math.PI;
-	this.geometry.angle -= this.torque * t * t * 0.5/this.inertia;
+	this.geometry.position.add(this.velocity.clone().scale(t));
+	this.geometry.position.add(accelleration.clone().scale(t * t * 0.5));
+	
+	this.geometry.angle += this.angularVelocity * 2*Math.PI * t;
+	
+	this.geometry.angle += angularAccelleration * 2*Math.PI * t * t * 0.5;
 	if (this.geometry.angle > 2*Math.PI) this.geometry.angle-=2*Math.PI;
 	if (this.geometry.angle < 0) this.geometry.angle+=2*Math.PI;
 	
-	this.velocity.add(this.force.scale(t/this.mass));
-	this.angularVelocity += this.torque/this.inertia;
+	this.velocity.add(accelleration);
+	this.angularVelocity += angularAccelleration;
 	
 	this.force.scale(0);
 	this.torque = 0;
@@ -365,20 +369,16 @@ RigidBody.prototype.applyImpulse = function(coordinate, impulse)
 	var radius = normal.length();
 	normal.normalize();
 	
-	var vector1 = impulse.clone();
-	vector1.project(normal);
+	this.velocity.add(impulse.clone(
+	).project(normal
+	).scale(1/this.mass)
+	);
 	
-	var vector2 = impulse.clone();
-	vector2.subtract(vector1);
-	
-	vector1.scale(1/this.mass);
-	this.velocity.add(vector1)
-	
-	var angular = vector2.length();
-	
-	if (normal.x * impulse.y < 0)angular = -angular;
-	else if (impulse.y==0)
-		if (normal.y * impulse.x > 0)angular = -angular;
+	var angular = impulse.clone(
+	).dot(normal.clone(
+	).scale(radius
+	).perp()
+	);
 	
 	this.angularVelocity -= angular / this.inertia;
 }
@@ -407,26 +407,15 @@ RigidBody.prototype.applyForce = function(coordinate, force)
 {
 	if (this.stationary) return;
 	
-	var normal = coordinate.clone(
-	).subtract(this.geometry.position);
-	var radius = normal.length();
-	normal.normalize();
+	this.force.add(force)
 	
-	var vector1 = force.clone();
-	vector1.project(normal);
+	var torque = force.clone(
+	).dot(coordinate.clone(
+	).subtract(this.geometry.position
+	).perp()
+	);
 	
-	var vector2 = force.clone();
-	vector2.subtract(vector1);
-	
-	this.force.add(vector1)
-	
-	var angular = vector2.length();
-	
-	if (normal.x * force.y < 0)angular = -angular;
-	else if (force.y==0)
-		if (normal.y * force.x > 0)angular = -angular;
-	
-	this.torque -= angular * radius;
+	this.torque += torque;
 }
 /*
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

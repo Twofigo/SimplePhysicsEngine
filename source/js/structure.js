@@ -34,7 +34,7 @@ function Vector2D(x , y)
 	//	project;
 	//	reverse;
 	//	normalize;
-	//	dotProduct;
+	//	dot;
 	//	rotate;
 	//	perp;
 	
