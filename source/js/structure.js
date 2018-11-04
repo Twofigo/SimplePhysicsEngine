@@ -92,7 +92,7 @@ function RigidBody()
 	
 	this.geometry 			= false;
 
-	this.friction			= 1;
+	this.friction			= 0.1;
 	this.restitution		= 0.2;
 	
 	this.velocity			= new Vector2D();

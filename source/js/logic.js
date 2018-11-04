@@ -420,6 +420,11 @@ Collision.prototype.resolveCollision = function()
 		var e = this.objA.restitution;
 	else
 		var e = this.objB.restitution;
+	
+	if (this.objA.friction >= this.objB.friction)
+		var f = this.objA.friction;
+	else
+		var f = this.objB.friction;
 
 	var rApn = radianA.clone( 
 	).cross(this.normal);
@@ -433,10 +438,16 @@ Collision.prototype.resolveCollision = function()
 	totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
 	totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
 	
-	var j = (-(1+e)*relativeV.dot(this.normal))/totalMass
-	
 	var impulse = this.normal.clone(
-	).scale(j);
+	).scale(
+	(-(1+e)*relativeV.dot(this.normal))/totalMass
+	);
+	impulse.add( this.normal.clone(
+	).perp(
+	).scale(
+	(-f*relativeV.dot(this.normal.clone().perp()))/totalMass
+	)
+	);
 	
 	this.objA.applyImpulse(this.point, impulse);
 	
