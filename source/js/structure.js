@@ -1,6 +1,5 @@
 function Game()
 {
-	// attributes
 	this.canvas			= false;
 	this.ctx			= false;
 	this.gameloop		= false;
@@ -8,63 +7,119 @@ function Game()
 	this.zoom			= 1;
 	this.world			= false;
 
-	// members
-	//	this.initiate;
-	//	this.setSize;
+	//	initiate;
+	//	setSize;
 }
 
 function World()
 {
-	// attributes
-	this.gravityStrength	= 200;
+	this.gravity = new Vector2D();
 	
-	this.staticBodies	= [];
+	this.enteties	= [];
 	this.rigidBodies	= [];
-	
-	// members
 }
 
-function Vector2D(_x , _y)
+function Vector2D(x , y)
 {
-	// attributes
-	this.x		= _x || 0;
-	this.y		= _y || 0;
+	this.x		= x || 0;
+	this.y		= y || 0;
 	
-	// members
-	//	this.copy;
-	//	this.clone;
+	//	copy;
+	//	clone;
 	
-	//	this.add;
-	//	this.subtract;
-	//	this.scale;
+	//	add;
+	//	subtract;
+	//	scale;
 	
-	//	this.project;
-	//	this.reverse;
-	//	this.normalize;
-	//	this.dotProduct;
-	//	this.rotate;
-	//	this.perp;
+	//	project;
+	//	reverse;
+	//	normalize;
+	//	dot;
+	//	rotate;
+	//	perp;
 	
-	//	this.squareLength;
-	//	this.lenght;
+	//	squareLength;
+	//	lenght;
 }
-
-function Surface(_pointA, _pointB)
+function GraphicsData()
 {
-	// attributes
-	this.pointA 	= _pointA || new Vector2D();
-	this.pointB 	= _pointB || new Vector2D();
-	
-	// members
-	//	this.clone;
-	//	this.intersect;
+	this.texture		= false;
+	this.textureSize	= false;
+	this.surfaceColor	= 'black';
 }
-
-function Collision(_objA, _objB)
+function Line(pointA, pointB)
 {
-	// attributes
-	this.objA				= _objA || false;
-	this.objB				= _objA || false;
+	this.pointA 	= pointA || new Vector2D();
+	this.pointB 	= pointB || new Vector2D();
+	
+	//	clone;
+	//	intersect;
+}
+function Entity(position, angle)
+{	
+	this.position		= position || new Vector2D();
+	this.angle			= angle || 0;
+			
+	this.graphicsData	= new GraphicsData();
+		
+	//	clone;
+	//	draw;
+	//	setPosition;
+}
+function Polygon(position, angle, vertices)
+{
+	Entity.call(this, position, angle);
+	this.vertices	= vertices || [];
+	
+	//	clone;
+	//	draw;
+	
+	//	getVertices;
+	//	getEdges;
+	
+	//	getAbsVertices;
+	//	getAbsEdges;
+}
+Polygon.prototype = Object.create(Entity.prototype);
+
+function RigidBody()
+{
+	this.gravity			= false;
+	this.moving				= false;
+	this.stationary			= false;
+	this.collidable			= true;
+	this.ghost				= false;
+	
+	this.geometry 			= false;
+
+	this.friction			= 1;
+	this.restitution		= 0.2;
+	
+	this.velocity			= new Vector2D();
+	this.angularVelocity	= 0;
+	this.force				= new Vector2D();
+	this.torque				= 0;
+	
+	this.density			= 0.1;
+	this.inertia			= false;
+	this.mass				= false;
+	this.surfaceArea		= false;
+	
+	//	update;
+	
+	//	setPosition;
+	//	setVelocity;
+	
+	//	getForce;
+	//	applyForce;
+	
+	//	getImpulse;
+	//	applyImpulse;
+}
+function Collision(objA, objB)
+{
+	this.objA				= objA || false;
+	this.objB				= objB || false;
 	
 	this.normal				= false;
 	this.point				= false;
@@ -72,61 +127,7 @@ function Collision(_objA, _objB)
 	this.offsetA			= false;
 	this.offsetB			= false;
 	
-	// members
-	//	this.resolveCollision;
-	//	this.correctCollision;
+	//	resolveCollision;
+	//	correctCollision;
 	
 }
-
-function Polygon()
-{
-	// attributes
-	this.points		= [];
-	
-	// members
-	//	this.getVertices;
-	//	this.getSurfaces;
-}
-
-function StaticBody()
-{
-	// attributes
-	this.id				= false;
-	this.geometry		= false;
-	
-	this.position		= new Vector2D();
-	this.angle			= 0;
-	
-	this.friction		= 1;
-	this.restitution		= 1;
-	
-	this.surfaceColor	= "black";
-	
-	// members
-	//	this.draw;
-	//	this.getVertices;
-	//	this.getSurfaces;
-}
-
-function RigidBody()
-{
-	StaticBody.call(this);
-	
-	// attributes
-	this.velocity			= new Vector2D();
-	this.angularVelocity	= 0;
-	
-	this.density			= 1;
-	
-	this.inertia			= false;
-	this.mass				= false;
-	this.inv_mass			= false;
-	this.surfaceArea		= false;
-	
-	// members
-	//	update();
-	//	getForceInPoint();
-	//	addForceInPoint();
-}
-
-RigidBody.prototype = Object.create(StaticBody.prototype);
