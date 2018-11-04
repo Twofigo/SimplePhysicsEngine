@@ -16,8 +16,8 @@ function setup()
 	];
 	var obj = new RigidBody()
 	obj.geometry = geo;
-	obj.setPosition(0,0,0);
-	obj.setVelocity(0,0,2);
+	obj.setPosition(0,0,-20);
+	obj.setVelocity(0,20,0);
 	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	
@@ -30,8 +30,8 @@ function setup()
 	];
 	var obj = new RigidBody()
 	obj.geometry = geo;
-	obj.setPosition(200,0,0);
-	obj.setVelocity(-200,0,1);
+	obj.setPosition(200,0,20);
+	obj.setVelocity(-200,0,0);
 	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	
@@ -102,6 +102,7 @@ function mainloop(timestamp)
 	game.timestamp = timestamp;
 	
 	if (timeDelta>50)timeDelta=6;
+	//timeDelta=5;
 	
 	updateForeground(timeDelta);
 	updateBackground(timeDelta);

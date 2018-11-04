@@ -117,6 +117,10 @@ Vector2D.prototype.dot = function(vector)
 {
 	return this.x * vector.x + this.y * vector.y;
 }
+Vector2D.prototype.cross = function(vector)
+{
+	return this.x * vector.y - this.y * vector.x;
+}
 Vector2D.prototype.rotate = function(angle) 
 {
 	var s = Math.sin(angle);
@@ -304,23 +308,26 @@ RigidBody.prototype.update = function(time)
 	this.moving = true;
 	var t = time / 1000;
 	
+	//position
 	if (this.gravity) this.force.add(game.world.gravity.clone().scale(this.mass));
-	
-	var accelleration = this.force.scale(t/this.mass);
-	var angularAccelleration = this.torque/this.inertia;
+	var accelleration = this.force.scale(1/this.mass);
 	
 	this.geometry.position.add(this.velocity.clone().scale(t));
 	this.geometry.position.add(accelleration.clone().scale(t * t * 0.5));
 	
+	this.velocity.add(accelleration.scale(t));
+	
+	//angle
+	var angularAccelleration = this.torque/this.inertia;
+	
 	this.geometry.angle += this.angularVelocity * 2*Math.PI * t;
-	
 	this.geometry.angle += angularAccelleration * 2*Math.PI * t * t * 0.5;
-	if (this.geometry.angle > 2*Math.PI) this.geometry.angle-=2*Math.PI;
-	if (this.geometry.angle < 0) this.geometry.angle+=2*Math.PI;
+	if (this.geometry.angle > 2*Math.PI) this.geometry.angle%=2*Math.PI;
+	if (this.geometry.angle < 0) this.geometry.angle=(this.geometry.angle%(2*Math.PI)) - 2*Math.PI;
 	
-	this.velocity.add(accelleration);
-	this.angularVelocity += angularAccelleration;
+	this.angularVelocity += angularAccelleration*t;
 	
+	// reset forces
 	this.force.scale(0);
 	this.torque = 0;
 }
@@ -337,50 +344,18 @@ RigidBody.prototype.setVelocity = function(vx, vy, angularVelocity)
 	this.velocity.y		= vy;
 	this.angularVelocity= angularVelocity || 0;
 }
-RigidBody.prototype.getImpulse = function(coordinate)
-{
-	if (this.ghost) return new Vector2D();
-	if (!this.collidable) return new Vector2D();
-	if (this.stationary) return new Vector2D();
-		
-	var normal = coordinate.clone(
-	).subtract(this.geometry.position);
-	var radius = normal.length();
-	normal.normalize();
-	
-	var vector = this.velocity.clone(
-	).scale(this.mass);
-	
-	vector.add(normal.clone(
-	).scale(this.angularVelocity * this.inertia
-	).perp()
-	);
-	
-	return vector;
-}
 RigidBody.prototype.applyImpulse = function(coordinate, impulse)
 {
 	if (this.ghost) return;
 	if (!this.collidable) return;
 	if (this.stationary) return;
 	
-	var normal = coordinate.clone(
+	//linear
+	this.velocity.add(impulse.clone().scale(1/this.mass));
+
+	var temp = coordinate.clone(
 	).subtract(this.geometry.position);
-	var radius = normal.length();
-	normal.normalize();
-	
-	this.velocity.add(impulse.clone(
-	).project(normal
-	).scale(1/this.mass)
-	);
-	
-	var angular = impulse.clone(
-	).dot(normal.clone(
-	).scale(radius
-	).perp()
-	);
-	
-	this.angularVelocity -= angular / this.inertia;
+	this.angularVelocity += temp.cross(impulse) / this.inertia;
 }
 
 RigidBody.prototype.getForce = function(coordinate)
@@ -423,24 +398,66 @@ Collision
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 */
 Collision.prototype.resolveCollision = function()
-{
-	var vectorA = this.objA.getImpulse(this.point);
-	var vectorB = this.objB.getImpulse(this.point);
+{	
+	var radianA = this.point.clone(
+	).subtract(this.objA.geometry.position);
 	
-	var newVectorA = vectorB.clone().subtract(vectorA);
-	var newVectorB = vectorA.clone().subtract(vectorB);
+	var velocityA = this.objA.velocity.clone(
+	).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
 	
-	this.objA.applyImpulse(this.point, newVectorA);
-	this.objB.applyImpulse(this.point, newVectorB);
+	var radianB = this.point.clone(
+	).subtract(this.objB.geometry.position);
 	
-	this.objA.applyForce(this.point, this.objA.getForce(this.point).project(this.normal).reverse());
-	this.objB.applyForce(this.point, this.objB.getForce(this.point).project(this.normal).reverse());
+	var velocityB = this.objB.velocity.clone(
+	).add(radianA.clone().perp().scale(this.objB.angularVelocity).reverse());
+	
+	var relativeV = velocityA.clone(
+	).subtract(velocityB);
+	
+	if (relativeV.dot(this.normal)>0) return;
+	
+	if (this.objA.restitution >= this.objB.restitution)
+		var e = this.objA.restitution;
+	else
+		var e = this.objB.restitution;
+
+	var rApn = radianA.clone( 
+	).cross(this.normal);
+	
+	var rBpn = radianB.clone(
+	).cross(this.normal);
+	
+	var totalMass = 0;
+	totalMass +=	this.objA.stationary?0:(1/this.objA.mass);
+	totalMass +=	this.objB.stationary?0:(1/this.objB.mass);
+	totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
+	totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
+	
+	var j = (-(1+e)*relativeV.dot(this.normal))/totalMass
+	
+	var impulse = this.normal.clone(
+	).scale(j);
+	
+	this.objA.applyImpulse(this.point, impulse);
+	
+	this.objB.applyImpulse(this.point, impulse.reverse());
+
+	//this.objA.applyForce(this.point, this.objA.getForce(this.point).project(this.normal).reverse());
+	//this.objB.applyForce(this.point, this.objB.getForce(this.point).project(this.normal).reverse());
+	/*
+	console.log(
+	"obA linear: "+this.obA.velocity*this.mass
+	+" obA angular: "+
+	""+
+	""+
+	)
+	*/
 }
 
 Collision.prototype.correctCollision = function()
 {
 	const percent = 0.2;
-	const slop = 0.01;
+	const slop = 0.1;
 	
 	var v = this.normal.clone()
 	var correction = 0;
@@ -497,18 +514,29 @@ function testPolygonPolygon(bodyA, bodyB)
 	collision.objA = bodyA;
 	collision.objB = bodyB;
 	
+	collision.point = pointA.clone(
+	).add(pointB
+	).scale(0.5);
+	
 	collision.normal = pointB.clone(
 	).subtract(pointA
 	).normalize(
 	).perp();
 	
-	collision.point = pointA.clone(
-	).add(pointB
-	).scale(0.5);
+	if (collision.normal.squareLength()==0) return false;
+	
+	if (collision.objA.geometry.position.clone(
+	).subtract(pointA
+	).dot(collision.normal
+	)<0)
+	{
+		collision.normal.reverse();
+	}
 	
 	collision.offsetA = findOffset(bodyA.geometry, pointA, collision.normal);
 
 	collision.offsetB = findOffset(bodyB.geometry, pointA, collision.normal);
+	
 	
 	return collision;
 }
@@ -560,7 +588,8 @@ function compilePolygon(body)
 		).length();
 		
 		let surfaceArea = b*h/2;
-		let inertia = ( (b*b*b)*h - (b*b)*h*a + b*h*(a*a) + b*(h*h*h) ) / 36 
+		//let inertia = ( (b*b*b)*h - (b*b)*h*a + b*h*(a*a) + b*(h*h*h) ) / 36;
+		let inertia = b*h*(b*b - b*a + a*a + h*h)/36;
 		
 		let center = new Vector2D(); 
 		center.x = ( line.pointA.x + line.pointB.x ) / 3;
@@ -569,36 +598,18 @@ function compilePolygon(body)
 		let d = center.length();
 		
 		body.mass			+= body.density*surfaceArea;
-		body.inertia		+= body.density*surfaceArea * (d*d) + inertia;
+		body.inertia		+= body.density*surfaceArea * (d*d) + inertia*body.density*surfaceArea;
 		body.surfaceArea	+= surfaceArea;
 		originOffset.add(center);
 	}
 	
 	body.inv_mass	= 1/body.mass;
 	
-	console.log("color: "+body.geometry.graphicsData.surfaceColor);
-	console.log("mass: "+body.mass);
-	console.log("inertia: "+body.inertia);
-	console.log("area: "+body.surfaceArea);
-	
-	// cheat
-	
 	for( vertex of body.geometry.vertices)
 	{
 		vertex.x += originOffset.x;
 		vertex.y += originOffset.y;
 	}
-	
-	
-	/*
-	game.ctx.beginPath();
-	game.ctx.fillStyle="black";
-	game.ctx.fillRect(
-	originOffset.x + body.position.x - 2
-	originOffset.y + body.position.y - 2
-	4,4);
-	game.ctx.fill();
-	*/
 }
 
 

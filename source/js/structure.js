@@ -93,14 +93,14 @@ function RigidBody()
 	this.geometry 			= false;
 
 	this.friction			= 1;
-	this.restitution		= 1;
+	this.restitution		= 0.2;
 	
 	this.velocity			= new Vector2D();
 	this.angularVelocity	= 0;
 	this.force				= new Vector2D();
 	this.torque				= 0;
 	
-	this.density			= 1;
+	this.density			= 0.1;
 	this.inertia			= false;
 	this.mass				= false;
 	this.surfaceArea		= false;
