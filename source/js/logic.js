@@ -442,8 +442,7 @@ Collision.prototype.resolveCollision = function()
 	).scale(
 	(-(1+e)*relativeV.dot(this.normal))/totalMass
 	);
-	impulse.add( this.normal.clone(
-	).perp(
+	impulse.add( this.normal.clone().perp(
 	).scale(
 	(-f*relativeV.dot(this.normal.clone().perp()))/totalMass
 	)
@@ -525,10 +524,6 @@ function testPolygonPolygon(bodyA, bodyB)
 	collision.objA = bodyA;
 	collision.objB = bodyB;
 	
-	collision.point = pointA.clone(
-	).add(pointB
-	).scale(0.5);
-	
 	collision.normal = pointB.clone(
 	).subtract(pointA
 	).normalize(
@@ -544,9 +539,37 @@ function testPolygonPolygon(bodyA, bodyB)
 		collision.normal.reverse();
 	}
 	
-	collision.offsetA = findOffset(bodyA.geometry, pointA, collision.normal);
-
-	collision.offsetB = findOffset(bodyB.geometry, pointA, collision.normal);
+	var temp1 = findOffset(bodyA.geometry, pointA, collision.normal);
+	collision.offsetA = temp1.offset;
+	
+	var temp2 = findOffset(bodyB.geometry, pointA, collision.normal);
+	collision.offsetB = temp2.offset;
+	
+	if (temp1 || temp2)
+	{
+		if (!temp2 ||
+		(temp1 && 
+		temp1.offset.length() > temp2.offset.length()))
+		{
+			collision.point = temp1.point;
+		}
+		else
+		{
+			collision.point = temp2.point;
+		}
+	}
+	else
+	{
+		collision.point = pointA.clone(
+		).add(pointB
+		).scale(0.5);		
+	}
+	
+	//drawForeground();
+	game.ctx.beginPath();
+	game.ctx.fillStyle="green";
+	game.ctx.fillRect((collision.point.x-2)*game.zoom, (collision.point.y-2)*game.zoom, 4*game.zoom, 4*game.zoom);
+	game.ctx.fill();
 	
 	
 	return collision;
@@ -555,6 +578,7 @@ function testPolygonPolygon(bodyA, bodyB)
 function findOffset(geometry, orgin, normal)
 {
 	var offset = false;
+	var point = false;
 	
 	var center = (new Vector2D()
 	).copy(geometry.position
@@ -568,10 +592,19 @@ function findOffset(geometry, orgin, normal)
 		).project(normal);
 		
 		if (v.x * center.x >=0 && v.y * center.y >=0) continue;
-		if (!(offset) || offset.squareLength() < v.squareLength()) offset = v;
+		if (!(offset) || offset.squareLength() < v.squareLength())
+		{
+			offset = v;
+			point = vertex.clone();
+		}
 	}
 	if (offset)
-		return offset.reverse();
+	{
+		return {
+		"offset":offset.reverse(),
+		"point":point
+		}
+	}
 	return false
 }
 
