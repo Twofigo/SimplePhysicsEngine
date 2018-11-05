@@ -399,58 +399,81 @@ Collision
 */
 Collision.prototype.resolveCollision = function()
 {	
-	var radianA = this.point.clone(
+	//general
+	let radianA = this.point.clone(
 	).subtract(this.objA.geometry.position);
-	
-	var velocityA = this.objA.velocity.clone(
-	).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
-	
-	var radianB = this.point.clone(
+	let radianB = this.point.clone(
 	).subtract(this.objB.geometry.position);
 	
-	var velocityB = this.objB.velocity.clone(
+	//bounce
+	let velocityA = this.objA.velocity.clone(
+	).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
+	let velocityB = this.objB.velocity.clone(
 	).add(radianB.clone().perp().scale(this.objB.angularVelocity).reverse());
 	
-	var relativeV = velocityA.clone(
+	let relativeV = velocityA.clone(
 	).subtract(velocityB);
 	
 	if (relativeV.dot(this.normal)>0) return;
 	
-	if (this.objA.restitution >= this.objB.restitution)
-		var e = this.objA.restitution;
-	else
-		var e = this.objB.restitution;
-	
-	var rApn = radianA.clone( 
+	let rApn = radianA.clone( 
 	).cross(this.normal);
-	
-	var rBpn = radianB.clone(
+	let rBpn = radianB.clone(
 	).cross(this.normal);
-	 
-	var totalMass = 0;
+	let totalMass = 0;
 	totalMass +=	this.objA.stationary?0:(1/this.objA.mass);
 	totalMass +=	this.objB.stationary?0:(1/this.objB.mass);
 	totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
 	totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
 	
-	var impulse = this.normal.clone(
-	).scale(
-	(-(1+e)*relativeV.dot(this.normal))/totalMass
+	let e = Math.sqrt(
+	this.objA.restitution*this.objA.restitution + 
+	this.objB.restitution*this.objB.restitution
 	);
 	
-	this.objA.applyImpulse(this.point, impulse);
+	let j = -(1+e)*relativeV.dot(this.normal)/totalMass
+	var impulse = this.normal.clone(
+	).scale(j);
 	
+	this.objA.applyImpulse(this.point, impulse);
 	this.objB.applyImpulse(this.point, impulse.reverse());
 
-	//this.objA.applyForce(this.point, this.objA.getForce(this.point).project(this.normal).reverse());
-	//this.objB.applyForce(this.point, this.objB.getForce(this.point).project(this.normal).reverse());
+	//friction
 	/*
-	console.log(
-	"obA linear: "+this.obA.velocity*this.mass
-	+" obA angular: "+
-	""+
-	""+
-	)
+	let tangent = this.normal.clone().perp();
+	
+	velocityA = this.objA.velocity.clone(
+	).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
+	velocityB = this.objB.velocity.clone(
+	).add(radianB.clone().perp().scale(this.objB.angularVelocity).reverse());
+	
+	relativeV = velocityA.clone(
+	).subtract(velocityB);
+	
+	let mu = Math.sqrt(
+	this.objA.staticFriction*this.objA.staticFriction + 
+	this.objB.staticFriction*this.objB.staticFriction
+	);
+	
+	let jt = -relativeV.dot(tangent)/totalMass
+	
+	var frictionImpulse;
+	if(Math.abs( jt ) < j * mu)
+	{
+		// static friction
+		frictionImpulse = tangent.clone().scale(jt)
+	}
+	else
+	{
+		// dunamic friction
+		frictionImpulse = tangent.clone().scale(j * Math.sqrt(
+		this.objA.dynamicFriction*this.objA.dynamicFriction + 
+		this.objB.dynamicFriction*this.objB.dynamicFriction
+		));
+	}
+	
+	this.objA.applyImpulse(this.point, frictionImpulse);
+	this.objB.applyImpulse(this.point, frictionImpulse.reverse());
 	*/
 }
 
@@ -632,7 +655,7 @@ function compilePolygon(body)
 		let d = center.length();
 		
 		body.mass			+= body.density*surfaceArea;
-		body.inertia		+= body.density*surfaceArea * (d*d) + inertia*body.density*surfaceArea;
+		body.inertia		+= body.density*surfaceArea * (d*d) + inertia*body.density;
 		body.surfaceArea	+= surfaceArea;
 		originOffset.add(center);
 	}
