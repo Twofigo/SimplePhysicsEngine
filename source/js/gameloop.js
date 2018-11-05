@@ -18,7 +18,7 @@ function setup()
 	obj.geometry = geo;
 	obj.setPosition(0,40,0);
 	obj.setVelocity(0,1,0);
-	obj.gravity=true;
+	obj.gravity=false;
 	game.world.rigidBodies.push(obj);
 	
 	var geo = new Polygon();
@@ -102,7 +102,7 @@ function mainloop(timestamp)
 	game.timestamp = timestamp;
 	
 	if (timeDelta>50)timeDelta=6;
-	timeDelta=5;
+	timeDelta=1;
 	
 	updateForeground(timeDelta);
 	updateBackground(timeDelta);
