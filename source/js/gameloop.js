@@ -17,8 +17,8 @@ function setup()
 	var obj = new RigidBody()
 	obj.geometry = geo;
 	obj.setPosition(0,40,0);
-	obj.setVelocity(0,0,0);
-	obj.gravity=false;
+	obj.setVelocity(0,1,0);
+	obj.gravity=true;
 	game.world.rigidBodies.push(obj);
 	
 	var geo = new Polygon();
