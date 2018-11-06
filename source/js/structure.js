@@ -92,9 +92,9 @@ function RigidBody()
 	
 	this.geometry 			= false;
 
-	this.staticFriction		= 0.16;
-	this.dynamicFriction	= 0.15;
-	this.restitution		= 0.05;
+	this.staticFriction		= 0.2;
+	this.dynamicFriction	= 0.17;
+	this.restitution		= 0.0005;
 	
 	this.velocity			= new Vector2D();
 	this.angularVelocity	= 0;
