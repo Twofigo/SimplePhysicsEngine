@@ -102,7 +102,7 @@ function mainloop(timestamp)
 	game.timestamp = timestamp;
 	
 	if (timeDelta>50)timeDelta=6;
-	timeDelta=1;
+	timeDelta=5;
 	
 	updateForeground(timeDelta);
 	updateBackground(timeDelta);

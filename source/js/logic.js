@@ -440,8 +440,7 @@ Collision.prototype.resolveCollision = function()
 
 	//friction
 	
-	let tangent = this.normal.clone().perp();
-	
+	let tangent = relativeV.project(this.normal.clone().perp()).normalize();
 	
 	velocityA = this.objA.velocity.clone(
 	).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
@@ -456,24 +455,25 @@ Collision.prototype.resolveCollision = function()
 	this.objB.staticFriction*this.objB.staticFriction
 	);
 	
+	var frictionImpulse;
+	
 	let jt = -relativeV.dot(tangent)/totalMass
 	
-	var frictionImpulse;
-	frictionImpulse = tangent.clone().scale(jt)
-	/*
 	if(Math.abs( jt ) < j * mu)
 	{
 		// static friction
-		frictionImpulse = tangent.clone().scale(jt)
+		frictionImpulse = tangent.clone(
+		).scale(jt
+		);
 	}
 	else
 	{
 		// dunamic friction
-		frictionImpulse = tangent.clone().scale(j * Math.sqrt(
+		frictionImpulse = tangent.clone().scale(-j * Math.sqrt(
 		this.objA.dynamicFriction*this.objA.dynamicFriction + 
 		this.objB.dynamicFriction*this.objB.dynamicFriction
 		));
-	}*/
+	}
 	
 	this.objA.applyImpulse(this.point, frictionImpulse);
 	this.objB.applyImpulse(this.point, frictionImpulse.reverse());
