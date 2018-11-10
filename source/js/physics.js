@@ -277,10 +277,7 @@ var physics = (function(){
     }
     
     Entity.prototype.draw = function(){
-        if (typeof geometry === 'Polygon')
-        {
-            drawPolygon(this.geometry, this.material, this.position, this.angle);
-        }
+       drawPolygon(this.geometry, this.material, this.position, this.angle);
     }
     
     var RigidBody = function(){    
@@ -508,7 +505,7 @@ var physics = (function(){
             vertex.rotate(angle).add(position);
             physics.scene.ctx.lineTo(vertex.x * physics.scene.zoom, vertex.y * physics.scene.zoom)
         }
-        physics.scene.ctx.fillStyle = pylygon.material.surfaceColor;
+        physics.scene.ctx.fillStyle = material.surfaceColor;
         physics.scene.ctx.fill();
         
         // center of mass
