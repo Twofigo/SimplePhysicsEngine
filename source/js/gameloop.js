@@ -2,6 +2,8 @@ var game;
 
 function setup()
 {
+    var mat = new physics.Material();
+    
 	var geo = new physics.Polygon();
 	geo.vertices = [
 	{x:-14,y:20},
@@ -13,6 +15,7 @@ function setup()
 	];
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
+    obj.material = mat;
 	obj.setPosition(0,40,0);
 	obj.setVelocity(0,1,0);
 	obj.gravity=true;
@@ -27,6 +30,7 @@ function setup()
 	];
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
+    obj.material = mat;
 	obj.setPosition(200,0,20);
 	obj.setVelocity(-200,0,0);
 	obj.gravity=true;
@@ -44,6 +48,7 @@ function setup()
 	
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
+    obj.material = mat;
 	obj.setPosition(0,400);
 	obj.stationary=true;
 	physics.scene.rigidBodies.push(obj)
@@ -51,6 +56,7 @@ function setup()
 	// roof
 	var obj = new physics.RigidBody();
 	obj.geometry = geo;
+    obj.material = mat;
 	obj.setPosition(0,-400);
 	obj.stationary=true;
 	physics.scene.rigidBodies.push(obj)
@@ -65,6 +71,7 @@ function setup()
 	];
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
+    obj.material = mat;
 	obj.setPosition(-500,0); 
 	obj.stationary=true;
 	physics.scene.rigidBodies.push(obj)
@@ -72,6 +79,7 @@ function setup()
 	// right wall
 	var obj = new physics.RigidBody();
 	obj.geometry = geo;
+    obj.material = mat;
 	obj.setPosition(500,0);
 	obj.stationary=true;
 	physics.scene.rigidBodies.push(obj)

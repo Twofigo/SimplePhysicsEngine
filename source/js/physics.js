@@ -11,7 +11,7 @@ var physics = (function(){
         return this;	
     }
     Vector.prototype.clone = function(){
-        return new Vector2D(this.x, this.y);
+        return new Vector(this.x, this.y);
     }
     Vector.prototype.add = function(vector){
         this.x += vector.x;
@@ -19,32 +19,32 @@ var physics = (function(){
 
         return this;
     }
-    Vector.prototype.subtract = function(vector) {
+    Vector.prototype.subtract = function(vector){
         this.x -= vector.x;
         this.y -= vector.y;
 
         return this;
     }
-    Vector.prototype.scale = function(x,y) {
+    Vector.prototype.scale = function(x,y){
         this.x *= x;
         this.y *= y || x;
         
         return this;
     }
-    Vector.prototype.project = function(vector) {
+    Vector.prototype.project = function(vector){
         var c = this.dot(vector) / vector.squareLength();
         this.x = c * vector.x;
         this.y = c * vector.y;
         
         return this;
     }
-    Vector.prototype.reverse = function() {
+    Vector.prototype.reverse = function(){
         this.x = -this.x;
         this.y = -this.y;
         
         return this;
     }
-    Vector.prototype.normalize = function() {
+    Vector.prototype.normalize = function(){
         var length = this.length();
         if(length > 0) 
         {
@@ -53,7 +53,7 @@ var physics = (function(){
         
         return this;
     }
-    Vector.prototype.rotate = function(angle) {
+    Vector.prototype.rotate = function(angle){
         var s = Math.sin(angle);
         var c = Math.cos(angle);	
         var x = this.x;
@@ -64,14 +64,14 @@ var physics = (function(){
         
         return this;
     }
-    Vector.prototype.perp = function() {
+    Vector.prototype.perp = function(){
         var x = this.x;
         this.x = this.y;
         this.y = -x;
         
         return this;
     }
-    Vector.prototype.squareLength = function() {
+    Vector.prototype.squareLength = function(){
         return this.dot(this);
     }
     Vector.prototype.length = function(){
@@ -91,38 +91,38 @@ var physics = (function(){
     
         this.zoom			= 1;
             
-        this.gravity = new Vector2D();	
+        this.gravity = new Vector();	
         this.enteties	= [];
         this.rigidBodies	= [];
     }
     
     Scene.prototype.init = function(){
         if (!this.canvas) this.canvas = document.getElementById("gameboard");
-        if (!this.context) this.ctx = game.canvas.getContext("2d");
+        if (!this.context) this.ctx = this.canvas.getContext("2d");
   
         this.setSize();
         
-        for(obj of this..rigidBodies)
+        for(obj of this.rigidBodies)
         {
             if (obj.mass !== false) continue;
             if (obj.geometry instanceof Polygon)
                 compilePolygon(obj);
         }
-    } 
+    }
     Scene.prototype.update = function(time){
       	if (!time) return;
-        for(let obj of this.rigidBodies)
+        for(var obj of this.rigidBodies)
         {
             obj.update(time);
         }
         
         // collide others
-        for (let k1=0; k1<this.rigidBodies.length; k1++)
+        for (var k1=0; k1<this.rigidBodies.length; k1++)
         {
-            let objA = this.rigidBodies[k1];
-            for (let k2=k1+1; k2<this.rigidBodies.length; k2++)
+            var objA = this.rigidBodies[k1];
+            for (var k2=k1+1; k2<this.rigidBodies.length; k2++)
             {
-                let objB = this.rigidBodies[k2];
+                var objB = this.rigidBodies[k2];
                 
                 if (objA.stationary && objB.stationary) continue;
                 if (!(objA.moving || objB.moving)) continue;
@@ -143,7 +143,7 @@ var physics = (function(){
         } 
     }
     Scene.prototype.draw = function(time){
-        game.ctx.clearRect(-game.canvas.width/2, -game.canvas.height/2, game.canvas.width, game.canvas.height);
+        this.ctx.clearRect(-this.canvas.width/2, -this.canvas.height/2, this.canvas.width, this.canvas.height);
         for(obj of this.enteties)
         {
             obj.draw();
@@ -167,8 +167,7 @@ var physics = (function(){
             this.zoom = window.innerHeight / 1000;
         
         
-        drawForeground();
-        drawBackground();
+        this.draw();
     }
     
     var Material = function(){    
@@ -185,15 +184,26 @@ var physics = (function(){
     }
     
     var Line = function(pointA, pointB){
-        this.pointA 	= pointA || new Vector2D();
-        this.pointB 	= pointB || new Vector2D();
+        this.pointA 	= pointA || new Vector();
+        this.pointB 	= pointB || new Vector();
     }
 	
     Line.prototype.clone = function(){
         return new Line(this.pointA.clone(), this.pointB.clone());
     }
+    Line.prototype.rotate = function(angle){
+        this.pointA.rotate(angle);
+        this.pointB.rotate(angle);
+        return this;
+    }
+    Line.prototype.add = function(position){
+        this.pointA.add(position);
+        this.pointB.add(position);
+        
+        return this;
+    }
     Line.prototype.intersect = function(line){	
-        var cordinate = new Vector2D();
+        var cordinate = new Vector();
             
         var s1_x = this.pointB.x - this.pointA.x;     
         var s1_y = this.pointB.y - this.pointA.y;   
@@ -223,16 +233,16 @@ var physics = (function(){
     
     Polygon.prototype.clone = function(){	
         var obj = new Polygon(this.position.clone(), this.angle);
-        for(let vertex of this.getVertices())
+        for(var vertex of this.getVertices())
         {
             obj.vertices.push(vertex);
         }
         return obj;
     }
     Polygon.prototype.getVertices = function*(){	
-        for(let vertex of this.vertices)
+        for(var vertex of this.vertices)
         {
-            yield (new Vector2D()).copy(vertex);
+            yield (new Vector()).copy(vertex);
         }
     }
     Polygon.prototype.getEdges = function*(){
@@ -241,7 +251,7 @@ var physics = (function(){
         line.pointB=false;
         var startPoint=	false;
         
-        for(let vertex of this.getVertices())
+        for(var vertex of this.getVertices())
         {
             if (line.pointB===false)
             {
@@ -257,25 +267,6 @@ var physics = (function(){
         line.pointB = startPoint;
         yield line.clone();
     }
-    Polygon.prototype.getAbsVertices = function*(){	
-        for(let vertex of this.getVertices())
-        {
-            vertex.rotate(this.angle);
-            vertex.add(this.position);
-            yield vertex;
-        }
-    }
-    Polygon.prototype.getAbsEdges = function*(){
-        for(let line of this.getEdges())
-        {
-            line.pointA.rotate(this.angle);
-            line.pointA.add(this.position);
-            line.pointB.rotate(this.angle);
-            line.pointB.add(this.position);
-            
-            yield line.clone();
-        }
-    }
     
     var Entity = function(){
         this.position   = new Vector();
@@ -288,14 +279,16 @@ var physics = (function(){
     Entity.prototype.draw = function(){
         if (typeof geometry === 'Polygon')
         {
-            drawPolygon(this.geometry, this.material);
+            drawPolygon(this.geometry, this.material, this.position, this.angle);
         }
     }
     
-    var RigidBody = function(){        
-        this.velocity			= new Vector2D();
+    var RigidBody = function(){    
+        Entity.call(this);
+    
+        this.velocity			= new Vector();
         this.angularVelocity	= 0;
-        this.force				= new Vector2D();
+        this.force				= new Vector();
         this.torque				= 0;
         
         this.inertia			= false;
@@ -311,7 +304,9 @@ var physics = (function(){
     RigidBody.prototype = Object.create(Entity.prototype);
     
     RigidBody.prototype.setPosition = function(x, y, angle){
-        this.geometry.setPosition(x,y, angle);
+        this.position.x =   x;
+        this.position.y =   y;
+        this.angle =        angle;
     }
     RigidBody.prototype.setVelocity = function(vx, vy, angularVelocity){
         if (vx=='undefined' || vy=='undefined') return;
@@ -368,40 +363,41 @@ var physics = (function(){
         this.offsetA			= false;
         this.offsetB			= false;
     }
+ 
     Collision.prototype.resolveCollision = function(){	
         //general
-        let radianA = this.point.clone(
+        var radianA = this.point.clone(
         ).subtract(this.objA.position);
-        let radianB = this.point.clone(
+        var radianB = this.point.clone(
         ).subtract(this.objB.position);
         
         //bounce
-        let velocityA = this.objA.velocity.clone(
+        var velocityA = this.objA.velocity.clone(
         ).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
-        let velocityB = this.objB.velocity.clone(
+        var velocityB = this.objB.velocity.clone(
         ).add(radianB.clone().perp().scale(this.objB.angularVelocity).reverse());
         
-        let relativeV = velocityA.clone(
+        var relativeV = velocityA.clone(
         ).subtract(velocityB);
         
         if (relativeV.dot(this.normal)>0) return;
         
-        let rApn = radianA.clone( 
+        var rApn = radianA.clone( 
         ).cross(this.normal);
-        let rBpn = radianB.clone(
+        var rBpn = radianB.clone(
         ).cross(this.normal);
-        let totalMass = 0;
+        var totalMass = 0;
         totalMass +=	this.objA.stationary?0:(1/this.objA.mass);
         totalMass +=	this.objB.stationary?0:(1/this.objB.mass);
         totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
         totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
         
-        let e = Math.sqrt(
+        var e = Math.sqrt(
         this.objA.material.restitution*this.objA.material.restitution + 
         this.objB.material.restitution*this.objB.material.restitution
         );
         
-        let j = -(1+e)*relativeV.dot(this.normal)/totalMass
+        var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
         
@@ -410,7 +406,7 @@ var physics = (function(){
 
         //friction
         
-        let tangent = relativeV.project(this.normal.clone().perp()).normalize();
+        var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
         velocityA = this.objA.velocity.clone(
         ).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
@@ -420,14 +416,14 @@ var physics = (function(){
         relativeV = velocityA.clone(
         ).subtract(velocityB);
         
-        let mu = Math.sqrt(
+        var mu = Math.sqrt(
         this.objA.material.staticFriction*this.objA.material.staticFriction + 
         this.objB.material.staticFriction*this.objB.material.staticFriction
         );
         
         var frictionImpulse;
         
-        let jt = -relativeV.dot(tangent)/totalMass
+        var jt = -relativeV.dot(tangent)/totalMass
         
         if(Math.abs( jt ) < j * mu)
         {
@@ -471,12 +467,46 @@ var physics = (function(){
             this.objB.position.add(this.offsetB.scale(percent));
         }
     }
-    
-    function drawPolygon(pylygon, material){
-        physics.scene.ctx.beginPath();
-        for(let cordinate of pylygon.getAbsVertices())
+    Collision.prototype.findOffset = function(obj){
+        var offset = false;
+        var point = false;
+        
+        var center = (new Vector()
+        ).copy(position
+        ).subtract(this.orgin
+        ).project(this.normal);
+
+        for(var vertex of obj.geometry.getVertices())
         {
-            physics.scene.ctx.lineTo(cordinate.x * physics.scene.zoom, cordinate.y * physics.scene.zoom)
+            vertex.rotate(obj.angle).add(obj.position);
+            
+            var v = vertex.clone(
+            ).subtract(this.orgin
+            ).project(this.normal);
+            
+            if (v.x * center.x >=0 && v.y * center.y >=0) continue;
+            if (!(offset) || offset.squareLength() < v.squareLength())
+            {
+                offset = v;
+                point = vertex.clone();
+            }
+        }
+        if (offset)
+        {
+            return {
+            "offset":offset.reverse(),
+            "point":point
+            }
+        }
+        return false
+    }
+    
+    function drawPolygon(pylygon, material, position, angle=0){
+        physics.scene.ctx.beginPath();
+        for(var vertex of pylygon.getVertices())
+        {
+            vertex.rotate(angle).add(position);
+            physics.scene.ctx.lineTo(vertex.x * physics.scene.zoom, vertex.y * physics.scene.zoom)
         }
         physics.scene.ctx.fillStyle = pylygon.material.surfaceColor;
         physics.scene.ctx.fill();
@@ -493,11 +523,13 @@ var physics = (function(){
         var pointB = false;
         
         main:
-        for(let lineA of bodyA.geometry.getAbsEdges())
+        for(var lineA of bodyA.geometry.getEdges())
         {
-            for(let lineB of bodyB.geometry.getAbsEdges())
+            lineA.rotate(bodyA.angle).add(bodyA.position);
+            for(var lineB of bodyB.geometry.getEdges())
             {
-                let cordinate = lineA.intersect(lineB);
+                lineB.rotate(bodyB.angle).add(bodyB.position);
+                var cordinate = lineA.intersect(lineB);
                 if (cordinate) 
                 {
                     if (!pointA)pointA = cordinate
@@ -559,68 +591,37 @@ var physics = (function(){
         
         return collision;
     }
-    function findOffset(geometry, orgin, normal){
-        var offset = false;
-        var point = false;
-        
-        var center = (new Vector2D()
-        ).copy(position
-        ).subtract(orgin
-        ).project(normal);
-
-        for(let vertex of geometry.getAbsVertices())
-        {
-            let v = vertex.clone(
-            ).subtract(orgin
-            ).project(normal);
-            
-            if (v.x * center.x >=0 && v.y * center.y >=0) continue;
-            if (!(offset) || offset.squareLength() < v.squareLength())
-            {
-                offset = v;
-                point = vertex.clone();
-            }
-        }
-        if (offset)
-        {
-            return {
-            "offset":offset.reverse(),
-            "point":point
-            }
-        }
-        return false
-    }
     function compilePolygon(body){
         body.mass			= 0;
         body.inertia 		= 0;
         body.surfaceArea	= 0;
-        var originOffset = new Vector2D();
+        var originOffset = new Vector();
         for( line of body.geometry.getEdges() )
         {
             // relative cordinate !!!
             
-            let v = line.pointB.clone(
+            var v = line.pointB.clone(
             ).subtract(line.pointA);
             
-            let b = v.length();
+            var b = v.length();
             
-            let a = line.pointA.clone(
+            var a = line.pointA.clone(
             ).project(v
             ).length();
             
-            let h = line.pointA.clone(
+            var h = line.pointA.clone(
             ).project(v.perp()
             ).length();
             
-            let surfaceArea = b*h/2;
-            //let inertia = ( (b*b*b)*h - (b*b)*h*a + b*h*(a*a) + b*(h*h*h) ) / 36;
-            let inertia = b*h*(b*b - b*a + a*a + h*h)/36;
+            var surfaceArea = b*h/2;
+            //var inertia = ( (b*b*b)*h - (b*b)*h*a + b*h*(a*a) + b*(h*h*h) ) / 36;
+            var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
             
-            let center = new Vector2D(); 
+            var center = new Vector(); 
             center.x = ( line.pointA.x + line.pointB.x ) / 3;
             center.y = ( line.pointA.y + line.pointB.y ) / 3;
             
-            let d = center.length();
+            var d = center.length();
             
             body.mass			+= body.material.density*surfaceArea;
             body.inertia		+= body.material.density*surfaceArea * (d*d) + inertia*body.material.density;
