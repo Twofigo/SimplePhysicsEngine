@@ -344,19 +344,7 @@ RigidBody.prototype.setVelocity = function(vx, vy, angularVelocity)
 	this.velocity.y		= vy;
 	this.angularVelocity= angularVelocity || 0;
 }
-RigidBody.prototype.applyImpulse = function(coordinate, impulse)
-{
-	if (this.ghost) return;
-	if (!this.collidable) return;
-	if (this.stationary) return;
-	
-	//linear
-	this.velocity.add(impulse.clone().scale(1/this.mass));
 
-	var temp = coordinate.clone(
-	).subtract(this.geometry.position);
-	this.angularVelocity += temp.cross(impulse) / this.inertia;
-}
 
 RigidBody.prototype.getForce = function(coordinate)
 {
