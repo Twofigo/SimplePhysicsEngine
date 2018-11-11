@@ -16,9 +16,9 @@ function setup()
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
     obj.material = mat;
-	obj.setPosition(0,40,0);
-	obj.setVelocity(0,1,0);
-	obj.gravity=true;
+	obj.setPosition(0,80,0);
+	obj.setVelocity(0,0,0);
+	obj.gravity=false;
 	physics.scene.rigidBodies.push(obj);
 	
 	var geo = new physics.Polygon();
@@ -33,7 +33,7 @@ function setup()
     obj.material = mat;
 	obj.setPosition(200,0,20);
 	obj.setVelocity(-200,0,0);
-	obj.gravity=true;
+	obj.gravity=false;
 	physics.scene.rigidBodies.push(obj);
 	
 	
@@ -93,15 +93,8 @@ function setup()
 
 function mainloop(timestamp)
 {
-	if (physics.scene.timestamp === false) physics.scene.timestamp = timestamp;
-	var timeDelta = timestamp - physics.scene.timestamp;
-	physics.scene.timestamp = timestamp;
-	
-	if (timeDelta>50)timeDelta=6;
-	timeDelta=5;
-	
-	physics.scene.update(timeDelta);
-	physics.scene.draw(timeDelta);
+	physics.scene.update();
+	physics.scene.draw();
 	
 	window.requestAnimationFrame(mainloop)
 }
