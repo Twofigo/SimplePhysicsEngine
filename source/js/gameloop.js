@@ -93,7 +93,7 @@ function setup()
 
 function mainloop(timestamp)
 {
-	physics.scene.update();
+	physics.scene.update(timestamp);
 	physics.scene.draw();
 	
 	window.requestAnimationFrame(mainloop)
