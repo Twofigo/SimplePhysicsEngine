@@ -425,7 +425,7 @@ var physics = (function(){
         this.objB.applyImpulse(this.point, impulse.reverse());
 
         //friction
-        /*
+        
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
         velocityA = this.objA.velocity.clone(
@@ -463,7 +463,7 @@ var physics = (function(){
         
         this.objA.applyImpulse(this.point, frictionImpulse);
         this.objB.applyImpulse(this.point, frictionImpulse.reverse());
-        */
+        
     }
     Collision.prototype.correctCollision = function(){
         const percent = 0.2;
