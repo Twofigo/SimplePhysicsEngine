@@ -353,10 +353,10 @@ var physics = (function(){
         //angle
         var angularAccelleration = this.torque/this.inertia;
         
-        this.angle += this.angularVelocity * 2*Math.PI * t;
-        this.angle += angularAccelleration * 2*Math.PI * t * t * 0.5;
+        this.angle += this.angularVelocity * t;
+        this.angle += angularAccelleration * t * t * 0.5;
         if (this.angle > 2*Math.PI) this.angle%=2*Math.PI;
-        if (this.angle < 0) this.angle=(this.angle%(2*Math.PI)) - 2*Math.PI;
+        if (this.angle < 0) this.angle=2*Math.PI + (this.angle%(2*Math.PI));
         
         this.angularVelocity += angularAccelleration*t;
         
@@ -425,7 +425,7 @@ var physics = (function(){
         this.objB.applyImpulse(this.point, impulse.reverse());
 
         //friction
-        
+        /*
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
         velocityA = this.objA.velocity.clone(
@@ -463,6 +463,7 @@ var physics = (function(){
         
         this.objA.applyImpulse(this.point, frictionImpulse);
         this.objB.applyImpulse(this.point, frictionImpulse.reverse());
+        */
     }
     Collision.prototype.correctCollision = function(){
         const percent = 0.2;

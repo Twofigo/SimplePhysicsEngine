@@ -18,7 +18,7 @@ function setup()
     obj.material = mat;
 	obj.setPosition(0,80,0);
 	obj.setVelocity(0,0,0);
-	obj.gravity=false;
+	obj.gravity=true;
 	physics.scene.rigidBodies.push(obj);
 	
 	var geo = new physics.Polygon();
@@ -31,9 +31,9 @@ function setup()
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
     obj.material = mat;
-	obj.setPosition(200,0,20);
+	obj.setPosition(200,0,0.5);
 	obj.setVelocity(-200,0,0);
-	obj.gravity=false;
+	obj.gravity=true;
 	physics.scene.rigidBodies.push(obj);
 	
 	
