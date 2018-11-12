@@ -126,7 +126,7 @@ var physics = (function(){
                 
                 if (objA.stationary && objB.stationary) continue;
                 
-                var collision = testPolygonPolygon(
+                var collision = collisionTests.polyPoly(
                 this.rigidBodies[k1],
                 this.rigidBodies[k2]
                 );
@@ -463,7 +463,6 @@ var physics = (function(){
         
         this.objA.applyImpulse(this.point, frictionImpulse);
         this.objB.applyImpulse(this.point, frictionImpulse.reverse());
-        
     }
     Collision.prototype.correctCollision = function(){
         const percent = 0.2;
@@ -489,23 +488,8 @@ var physics = (function(){
         }
     }
     
-    function drawPolygon(pylygon, material, position = new Vector(), angle = 0){
-        physics.scene.ctx.beginPath();
-        for(var vertex of pylygon.getVertices())
-        {
-            vertex.rotate(angle).add(position);
-            physics.scene.ctx.lineTo(vertex.x * physics.scene.zoom, vertex.y * physics.scene.zoom)
-        }
-        physics.scene.ctx.fillStyle = material.surfaceColor;
-        physics.scene.ctx.fill();
-        
-        // center of mass
-        physics.scene.ctx.beginPath();
-        physics.scene.ctx.fillStyle="#FFFFFF";
-        physics.scene.ctx.fillRect((position.x-1)*physics.scene.zoom, (position.y-1)*physics.scene.zoom, 2*physics.scene.zoom, 2*physics.scene.zoom);
-        physics.scene.ctx.fill();
-    }
-    function testPolygonPolygon(bodyA, bodyB){
+    var collisionTests = function(){};
+    collisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
         var pointB = false;
         
@@ -517,19 +501,16 @@ var physics = (function(){
             {
                 lineB.rotate(bodyB.angle).add(bodyB.position);
                 var cordinate = lineA.intersect(lineB);
-                if (cordinate) 
-                {
-                    if (!pointA)pointA = cordinate
-                    else
-                    {
-                        pointB = cordinate;
-                        break main;
-                    }
+                if (!cordinate) continue; 
+                if (!pointA)pointA = cordinate
+                else {
+                    pointB = cordinate;
+                    break main;
                 }
             }
         }
         
-        if (!pointA)return false;
+        if (!pointA || !pointB) return false;
         
         var collision = new Collision();
         collision.objA = bodyA;
@@ -539,9 +520,7 @@ var physics = (function(){
         ).subtract(pointA
         ).normalize(
         ).perp();
-        
-        if (collision.normal.squareLength()==0) return false;
-        
+         
         if (collision.objA.position.clone(
         ).subtract(pointA
         ).dot(collision.normal
@@ -550,34 +529,49 @@ var physics = (function(){
             collision.normal.reverse();
         }
         
-        var temp1 = findOffset(bodyA, pointA, collision.normal);
-        collision.offsetA = temp1.offset;
-        
-        var temp2 = findOffset(bodyB, pointA, collision.normal);
-        collision.offsetB = temp2.offset;
-        
-        if (temp1 || temp2)
+        var totalOffset = 0;
+        collision.point = new Vector();
+        for (var obj = collision.objA;; obj= collision.objB)
         {
-            if (!temp2 ||
-            (temp1 && 
-            temp1.offset.length() > temp2.offset.length()))
+            var maxOffset = false;
+            var center = obj.position.clone(
+            ).subtract(pointA
+            ).project(collision.normal)
+            
+            for(var vertex of obj.geometry.getVertices())
             {
-                collision.point = temp1.point;
+                vertex.rotate(obj.angle
+                ).add(obj.position);
+                var v = vertex.clone(
+                ).subtract(pointA
+                ).project(collision.normal);
+                
+                if (v.dot(center)>=0)continue;
+                
+                var offset = v.length()
+                collision.point.add(vertex.scale(offset));
+                totalOffset += offset;
+                if (!maxOffset || maxOffset.squareLength() < v.squareLength())
+                {
+                    maxOffset = v;
+                }
+            }
+            if (obj===collision.objA) {
+                if (maxOffset) collision.offsetA = maxOffset.reverse();
             }
             else
             {
-                collision.point = temp2.point;
+                if (maxOffset) collision.offsetB = maxOffset.reverse();
+                break;
             }
         }
-        else
-        {
-            collision.point = pointA.clone(
-            ).add(pointB
-            ).scale(0.5);		
-        }
+        collision.point.scale(1/totalOffset);
         
         return collision;
     }
+    collisionTests = new collisionTests();
+    
+    
     function compilePolygon(body){
         body.mass			= 0;
         body.inertia 		= 0;
@@ -624,38 +618,22 @@ var physics = (function(){
             vertex.y += originOffset.y;
         }
     }
-    function findOffset(obj, orgin, normal){
-        var offset = false;
-        var point = false;
+    
+    function drawPolygon(pylygon, material, position = new Vector(), angle = 0){
+        physics.scene.ctx.beginPath();
+        for(var vertex of pylygon.getVertices())
+        {
+            vertex.rotate(angle).add(position);
+            physics.scene.ctx.lineTo(vertex.x * physics.scene.zoom, vertex.y * physics.scene.zoom)
+        }
+        physics.scene.ctx.fillStyle = material.surfaceColor;
+        physics.scene.ctx.fill();
         
-        var center = (new Vector()
-        ).copy(obj.position
-        ).subtract(orgin
-        ).project(normal);
-
-        for(var vertex of obj.geometry.getVertices())
-        {
-            vertex.rotate(obj.angle).add(obj.position);
-            
-            var v = vertex.clone(
-            ).subtract(orgin
-            ).project(normal);
-            
-            if (v.x * center.x >=0 && v.y * center.y >=0) continue;
-            if (!(offset) || offset.squareLength() < v.squareLength())
-            {
-                offset = v;
-                point = vertex.clone();
-            }
-        }
-        if (offset)
-        {
-            return {
-            "offset":offset.reverse(),
-            "point":point
-            }
-        }
-        return false
+        // center of mass
+        physics.scene.ctx.beginPath();
+        physics.scene.ctx.fillStyle="#FFFFFF";
+        physics.scene.ctx.fillRect((position.x-1)*physics.scene.zoom, (position.y-1)*physics.scene.zoom, 2*physics.scene.zoom, 2*physics.scene.zoom);
+        physics.scene.ctx.fill();
     }
     
     return{
