@@ -1,6 +1,5 @@
 var physics = (function(){
-   function getInstance()
-   {
+   function getInstance(){
        return new Scene();
    }
 
@@ -111,7 +110,8 @@ var physics = (function(){
         
         for(var obj of this.rigidBodies)
         {
-            obj.update(this, time);
+            obj.addForce(this.gravity.clone().scale(obj.mass));
+            obj.update(time);
         }
         
         // collide others
@@ -367,12 +367,11 @@ var physics = (function(){
         this.velocity.y		= vy;
         this.angularVelocity= angularVelocity || 0;
     }
-    RigidBody.prototype.update = function(scene, time){
+    RigidBody.prototype.update = function(time){
         if (this.stationary) return;
         var t = time / 1000;
         
         //position
-        if (this.gravity) this.force.add(scene.gravity.clone().scale(this.mass));
         var accelleration = this.force.scale(1/this.mass);
         
         this.position.add(this.velocity.clone().scale(t));
@@ -404,6 +403,12 @@ var physics = (function(){
         var temp = coordinate.clone(
         ).subtract(this.position);
         this.angularVelocity += temp.cross(impulse) / this.inertia;
+    }
+    RigidBody.prototype.addForce = function(force){
+        this.force.add(force);
+    }
+    RigidBody.prototype.addTorque = function(torque){
+        this.torque += torque;
     }
     RigidBody.prototype.compile = function() {
         var data;
