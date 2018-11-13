@@ -171,8 +171,7 @@ var physics = (function(){
         
         this.draw();
     }
-    Scene.prototype.getTimeDelta = function(timestamp)
-    {
+    Scene.prototype.getTimeDelta = function(timestamp){
         if (!timestamp)
         {
             this.timestamp = false;
@@ -199,6 +198,17 @@ var physics = (function(){
         this.timestamp = timestamp;
         
         return time
+    }
+    Scene.prototype.add = function(obj)
+    {
+        if (obj instanceof RigidBody)
+        {
+            this.rigidBodies.push(obj);
+        }
+        else if (obj instanceof Entity)
+        {
+            this.enteties.push(obj)
+        }
     }
     
     var Material = function(){    
