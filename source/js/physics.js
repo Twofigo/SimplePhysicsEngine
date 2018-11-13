@@ -176,7 +176,7 @@ var physics = (function(){
         var time = timestamp - this.timestamp;
         
         
-        if (time > 500)
+        if (time > 250)
         {
             this.timestamp = false;
             return 10;
@@ -232,6 +232,9 @@ var physics = (function(){
         this.canvasOffset = new Vector();
         this.cursorPosition = new Vector();
         this.cursorVelocity = new Vector();
+        this.timestamp = false;
+        
+        this.listeners = {};
     }
     InputTracker.prototype.set = function(canvas){
         if (this.canvas) return;
@@ -246,6 +249,29 @@ var physics = (function(){
         document.body.addEventListener("keydown", function(event){self.keyStart(event)});
         document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
     }
+    InputTracker.prototype.unset = function(){
+        return; // WIP
+    }
+    InputTracker.prototype.call = function(key, data=undefined){
+        if (!this.listeners[""+key]) return
+        
+        for (f of this.listeners[""+key].callouts){
+            f(data);
+        }
+    }
+    InputTracker.prototype.addListener = function(key, func){
+        if (!this.listeners[""+key]){
+            this.listeners[""+key] = {state:false, callouts:[]};
+        }
+        this.listeners[""+key].callouts.push(func);
+    }
+    InputTracker.prototype.removeListener = function(key, func) {
+        if (!this.listeners[""+key]) return
+        var index = this.listeners[""+key].callouts.indexOf(func);
+        if(index > -1) {
+            this.listeners[""+key].callouts.splice(index, 1);
+        }
+    }
     InputTracker.prototype.enable = function(){
         this.disabled = false;
     }
@@ -254,23 +280,40 @@ var physics = (function(){
     }
     InputTracker.prototype.cursorMove = function(event){
         if(this.disabled)return;
-        console.log("move");
     }
     InputTracker.prototype.cursorStart = function(event){
         if(this.disabled)return;
-        console.log("cstart");
+        
+        this.cursorMove(event);
+        var key = "m"+event.buttons;
+        if(!this.listeners[""+key]) return;
+        this.listeners[""+key].state = true;
+        this.call(key, true)
     }
     InputTracker.prototype.cursorEnd = function(event){
         if(this.disabled)return;
-        console.log("cend");
+        
+        this.cursorMove(event);
+        var key = "m"+event.buttons;
+        if(!this.listeners[""+key]) return;
+        this.listeners[""+key].state = false;
+        this.call(key, false)
     }
     InputTracker.prototype.keyStart = function(event){
         if(this.disabled)return;
-        console.log("kstart");
+        
+        var key = event.keyCode;
+        if(!this.listeners[""+key]) return;
+        this.listeners[""+key].state = true;
+        this.call(key, true)
     }
     InputTracker.prototype.keyEnd = function(event){
         if(this.disabled)return;
-        console.log("kend");
+        
+        var key = event.keyCode;
+        if(!this.listeners[""+key]) return;
+        this.listeners[""+key].state = false;
+        this.call(key, false)
     }
     
     var Material = function(){    
