@@ -1,7 +1,7 @@
 var ins;
 function setup()
 {
-    ins = physics.getInstance();
+    ins = new physics.Scene()
     
     var mat = new physics.Material();
     
@@ -92,8 +92,11 @@ function setup()
     ins.add(obj);
 
 	ins.gravity.y=300;
-	
 	ins.setup(document.getElementById("gameboard"));
+    
+    var tracker = new physics.InputTracker();
+    tracker.set(document.getElementById("gameboard"));
+    tracker.enable();
     
 	window.requestAnimationFrame(mainloop);
 }

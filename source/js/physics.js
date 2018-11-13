@@ -226,6 +226,52 @@ var physics = (function(){
         this.ctx.fill();
     }
 
+    var InputTracker = function(){
+        this.canvas = false
+        this.disabled = true;
+        this.canvasOffset = new Vector();
+        this.cursorPosition = new Vector();
+        this.cursorVelocity = new Vector();
+    }
+    InputTracker.prototype.set = function(canvas){
+        if (this.canvas) return;
+        this.canvas = canvas;
+        
+        var self = this;
+        this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
+        this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
+        this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
+        this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
+        this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
+        document.body.addEventListener("keydown", function(event){self.keyStart(event)});
+        document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
+    }
+    InputTracker.prototype.enable = function(){
+        this.disabled = false;
+    }
+    InputTracker.prototype.disable = function(){
+        this.disabled = true;
+    }
+    InputTracker.prototype.cursorMove = function(event){
+        if(this.disabled)return;
+        console.log("move");
+    }
+    InputTracker.prototype.cursorStart = function(event){
+        if(this.disabled)return;
+        console.log("cstart");
+    }
+    InputTracker.prototype.cursorEnd = function(event){
+        if(this.disabled)return;
+        console.log("cend");
+    }
+    InputTracker.prototype.keyStart = function(event){
+        if(this.disabled)return;
+        console.log("kstart");
+    }
+    InputTracker.prototype.keyEnd = function(event){
+        if(this.disabled)return;
+        console.log("kend");
+    }
     
     var Material = function(){    
         this.density			= 0.1;
@@ -662,7 +708,7 @@ var physics = (function(){
     }
         
     return{
-        getInstance: getInstance,
+        InputTracker: InputTracker,
         Scene: Scene,
         Vector: Vector,
         Material: Material,
