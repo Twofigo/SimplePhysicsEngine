@@ -205,7 +205,7 @@ var physics = (function(){
         this.density			= 0.1;
         this.staticFriction		= 0.2;
         this.dynamicFriction	= 0.17;
-        this.restitution		= 0.0005;
+        this.restitution		= 0.2;
 
         this.texture		= false;
         this.textureSize	= false;
