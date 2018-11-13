@@ -1,7 +1,8 @@
-var game;
-
+var ins;
 function setup()
 {
+    ins = physics.getInstance();
+    
     var mat = new physics.Material();
     
 	var geo = new physics.Polygon();
@@ -19,7 +20,8 @@ function setup()
 	obj.setPosition(0,40,0);
 	obj.setVelocity(0,0,0);
 	obj.gravity=true;
-	physics.scene.add(obj);
+    obj.compile();
+	ins.add(obj);
 	
 	var geo = new physics.Polygon();
 	geo.vertices = [
@@ -34,7 +36,8 @@ function setup()
 	obj.setPosition(200,0,0.5);
 	obj.setVelocity(-200,0,0);
 	obj.gravity=true;
-	physics.scene.add(obj);
+	obj.compile();
+    ins.add(obj);
 	
 	
 	// floor;
@@ -51,7 +54,8 @@ function setup()
     obj.material = mat;
 	obj.setPosition(0,400);
 	obj.stationary=true;
-	physics.scene.add(obj)
+	obj.compile();
+    ins.add(obj);
 
 	// roof
 	var obj = new physics.RigidBody();
@@ -59,7 +63,8 @@ function setup()
     obj.material = mat;
 	obj.setPosition(0,-400);
 	obj.stationary=true;
-	physics.scene.add(obj)
+	obj.compile();
+    ins.add(obj);
 	
 	// left wall
 	var geo = new physics.Polygon();
@@ -74,7 +79,8 @@ function setup()
     obj.material = mat;
 	obj.setPosition(-500,0); 
 	obj.stationary=true;
-	physics.scene.add(obj)
+	obj.compile();
+    ins.add(obj);
 	
 	// right wall
 	var obj = new physics.RigidBody();
@@ -82,19 +88,20 @@ function setup()
     obj.material = mat;
 	obj.setPosition(500,0);
 	obj.stationary=true;
-	physics.scene.add(obj)
+	obj.compile();
+    ins.add(obj);
+
+	ins.gravity.y=300;
 	
-	physics.scene.init();
-	
-	physics.scene.gravity.y=300;
-	
+	ins.setup(document.getElementById("gameboard"));
+    
 	window.requestAnimationFrame(mainloop);
 }
 
 function mainloop(timestamp)
 {
-	physics.scene.update(timestamp);
-	physics.scene.draw();
+	ins.update(timestamp);
+	ins.draw();
 	
 	window.requestAnimationFrame(mainloop)
 }

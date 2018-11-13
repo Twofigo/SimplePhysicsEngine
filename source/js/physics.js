@@ -1,5 +1,10 @@
 var physics = (function(){
-    var Vector = function(x   = 0, y   = 0){
+   function getInstance()
+   {
+       return new Scene();
+   }
+
+   var Vector = function(x   = 0, y   = 0){
         this.x  = x;
         this.y  = y;
     }
@@ -94,18 +99,11 @@ var physics = (function(){
         this.enteties	= [];
         this.rigidBodies	= [];
     }   
-    Scene.prototype.init = function(){
-        if (!this.canvas) this.canvas = document.getElementById("gameboard");
+    Scene.prototype.setup = function(canvas){
+        if (!this.canvas) this.canvas = canvas;
         if (!this.context) this.ctx = this.canvas.getContext("2d");
   
         this.setSize();
-        
-        for(obj of this.rigidBodies)
-        {
-            if (obj.mass !== false) continue;
-            if (obj.geometry instanceof Polygon)
-                compilePolygon(obj);
-        }
     }
     Scene.prototype.update = function(timestamp = false){
       	var time = this.getTimeDelta(timestamp);
@@ -113,7 +111,7 @@ var physics = (function(){
         
         for(var obj of this.rigidBodies)
         {
-            obj.update(time);
+            obj.update(this, time);
         }
         
         // collide others
@@ -148,11 +146,11 @@ var physics = (function(){
         this.ctx.clearRect(-this.canvas.width/2, -this.canvas.height/2, this.canvas.width, this.canvas.height);
         for(obj of this.enteties)
         {
-            obj.draw();
+            obj.draw(this);
         }
         for(obj of this.rigidBodies)
         {
-            obj.draw();
+            obj.draw(this);
         }
     }
     Scene.prototype.setSize = function(){
@@ -199,8 +197,13 @@ var physics = (function(){
         
         return time
     }
-    Scene.prototype.add = function(obj)
-    {
+    Scene.prototype.compileAll = function(){
+        for(obj of this.rigidBodies){
+            if (obj.mass !== false) continue;
+            obj.compile();
+        }
+    }
+    Scene.prototype.add = function(obj){
         if (obj instanceof RigidBody)
         {
             this.rigidBodies.push(obj);
@@ -305,6 +308,12 @@ var physics = (function(){
         line.pointB = startPoint;
         yield line.clone();
     }
+    Polygon.prototype.moveOrigin = function(offset){
+       for (vertex of this.vertices){
+           vertex.x+=offset.x;
+           vertex.y+=offset.y;
+       }
+    }
     
     var Entity = function(position = new Vector(),angle = 0,geometry = false,material = false){
         this.position   = position;
@@ -313,8 +322,19 @@ var physics = (function(){
         this.geometry   = geometry;
         this.material   = material;
     }
-    Entity.prototype.draw = function(){
-       drawPolygon(this.geometry, this.material, this.position, this.angle);
+    Entity.prototype.draw = function(scene){
+        if (this.geometry instanceof Polygon)
+        {
+            scene.ctx.beginPath();
+            for(var vertex of this.geometry.getVertices())
+            {
+                vertex.rotate(this.angle).add(this.position);
+                scene.ctx.lineTo(vertex.x * scene.zoom, vertex.y * scene.zoom)
+            }
+            scene.ctx.fillStyle = this.material.surfaceColor;
+            scene.ctx.fill();
+        }
+        drawPoint(scene, this.position, "white");
     }
     
     var RigidBody = function(position = new Vector(),angle = 0,geometry = false,material = false){    
@@ -347,12 +367,12 @@ var physics = (function(){
         this.velocity.y		= vy;
         this.angularVelocity= angularVelocity || 0;
     }
-    RigidBody.prototype.update = function(time){
+    RigidBody.prototype.update = function(scene, time){
         if (this.stationary) return;
         var t = time / 1000;
         
         //position
-        if (this.gravity) this.force.add(physics.scene.gravity.clone().scale(this.mass));
+        if (this.gravity) this.force.add(scene.gravity.clone().scale(this.mass));
         var accelleration = this.force.scale(1/this.mass);
         
         this.position.add(this.velocity.clone().scale(t));
@@ -384,6 +404,16 @@ var physics = (function(){
         var temp = coordinate.clone(
         ).subtract(this.position);
         this.angularVelocity += temp.cross(impulse) / this.inertia;
+    }
+    RigidBody.prototype.compile = function() {
+        var data;
+        if (this.geometry instanceof Polygon) {
+            data = compilePolygon(this.geometry, this.material);
+        }
+        this.mass = data.mass;
+        this.inertia = data.inertia;
+        this.surfaceArea = data.surfaceArea;
+        this.geometry.moveOrigin(data.originOffset);
     }
     
     var Collision = function Collision(){
@@ -422,11 +452,8 @@ var physics = (function(){
         totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
         totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
         
-        var e = Math.sqrt(
-        this.objA.material.restitution*this.objA.material.restitution + 
-        this.objB.material.restitution*this.objB.material.restitution
-        );
-        
+        var e = (this.objA.material.restitution + this.objB.material.restitution)/2;
+         
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
@@ -581,13 +608,23 @@ var physics = (function(){
     }
     collisionTests = new collisionTests();
     
+    function drawPoint(scene, position, color="black", size=1){
+        scene.ctx.beginPath();
+        scene.ctx.fillStyle="#FFFFFF";
+        scene.ctx.fillRect((position.x-size)*scene.zoom, (position.y-size)*scene.zoom, 2*size*scene.zoom, 2*size*scene.zoom);
+        scene.ctx.fill();
+    }
     
-    function compilePolygon(body){
-        body.mass			= 0;
-        body.inertia 		= 0;
-        body.surfaceArea	= 0;
+    function compilePolygon(geometry, material){
+        var data = {
+        "mass":0,
+        "inertia":0,
+        "surfaceArea":0,
+        "originOffset": new Vector()
+        };
+        
         var originOffset = new Vector();
-        for( line of body.geometry.getEdges() )
+        for( line of geometry.getEdges() )
         {
             // relative cordinate !!!
             
@@ -614,40 +651,17 @@ var physics = (function(){
             
             var d = center.length();
             
-            body.mass			+= body.material.density*surfaceArea;
-            body.inertia		+= body.material.density*surfaceArea * (d*d) + inertia*body.material.density;
-            body.surfaceArea	+= surfaceArea;
-            originOffset.add(center);
+            data.mass			+= material.density*surfaceArea;
+            data.inertia		+= material.density*surfaceArea * (d*d) + inertia*material.density;
+            data.surfaceArea	+= surfaceArea;
+            data.originOffset.add(center);
         }
-        
-        body.inv_mass	= 1/body.mass;
-        
-        for( vertex of body.geometry.vertices)
-        {
-            vertex.x += originOffset.x;
-            vertex.y += originOffset.y;
-        }
+        return data;
     }
-    
-    function drawPolygon(pylygon, material, position = new Vector(), angle = 0){
-        physics.scene.ctx.beginPath();
-        for(var vertex of pylygon.getVertices())
-        {
-            vertex.rotate(angle).add(position);
-            physics.scene.ctx.lineTo(vertex.x * physics.scene.zoom, vertex.y * physics.scene.zoom)
-        }
-        physics.scene.ctx.fillStyle = material.surfaceColor;
-        physics.scene.ctx.fill();
         
-        // center of mass
-        physics.scene.ctx.beginPath();
-        physics.scene.ctx.fillStyle="#FFFFFF";
-        physics.scene.ctx.fillRect((position.x-1)*physics.scene.zoom, (position.y-1)*physics.scene.zoom, 2*physics.scene.zoom, 2*physics.scene.zoom);
-        physics.scene.ctx.fill();
-    }
-    
     return{
-        scene: new Scene(),
+        getInstance: getInstance,
+        Scene: Scene,
         Vector: Vector,
         Material: Material,
         Polygon: Polygon,
