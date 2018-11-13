@@ -146,11 +146,11 @@ var physics = (function(){
         this.ctx.clearRect(-this.canvas.width/2, -this.canvas.height/2, this.canvas.width, this.canvas.height);
         for(obj of this.enteties)
         {
-            obj.draw(this);
+            this.drawEntity(obj);
         }
         for(obj of this.rigidBodies)
         {
-            obj.draw(this);
+            this.drawEntity(obj);
         }
     }
     Scene.prototype.setSize = function(){
@@ -213,6 +213,25 @@ var physics = (function(){
             this.enteties.push(obj)
         }
     }
+    Scene.prototype.drawEntity = function(entity, canvas=this.canvas){
+        if (entity.geometry instanceof Polygon){
+            this.ctx.beginPath();
+            for(var vertex of entity.geometry.getVertices()){
+                vertex.rotate(entity.angle).add(entity.position);
+                this.ctx.lineTo(vertex.x * this.zoom, vertex.y * this.zoom)
+            }
+            this.ctx.fillStyle = entity.material.surfaceColor;
+            this.ctx.fill();
+        }
+        this.drawPoint(entity.position, "white");
+    }
+    Scene.prototype.drawPoint = function(position, color="black", size=1){
+        this.ctx.beginPath();
+        this.ctx.fillStyle="#FFFFFF";
+        this.ctx.fillRect((position.x-size)*this.zoom, (position.y-size)*this.zoom, 2*size*this.zoom, 2*size*this.zoom);
+        this.ctx.fill();
+    }
+
     
     var Material = function(){    
         this.density			= 0.1;
@@ -321,20 +340,6 @@ var physics = (function(){
         
         this.geometry   = geometry;
         this.material   = material;
-    }
-    Entity.prototype.draw = function(scene){
-        if (this.geometry instanceof Polygon)
-        {
-            scene.ctx.beginPath();
-            for(var vertex of this.geometry.getVertices())
-            {
-                vertex.rotate(this.angle).add(this.position);
-                scene.ctx.lineTo(vertex.x * scene.zoom, vertex.y * scene.zoom)
-            }
-            scene.ctx.fillStyle = this.material.surfaceColor;
-            scene.ctx.fill();
-        }
-        drawPoint(scene, this.position, "white");
     }
     
     var RigidBody = function(position = new Vector(),angle = 0,geometry = false,material = false){    
@@ -611,14 +616,7 @@ var physics = (function(){
         
         return collision;
     }
-    collisionTests = new collisionTests();
-    
-    function drawPoint(scene, position, color="black", size=1){
-        scene.ctx.beginPath();
-        scene.ctx.fillStyle="#FFFFFF";
-        scene.ctx.fillRect((position.x-size)*scene.zoom, (position.y-size)*scene.zoom, 2*size*scene.zoom, 2*size*scene.zoom);
-        scene.ctx.fill();
-    }
+    collisionTests = new collisionTests();    
     
     function compilePolygon(geometry, material){
         var data = {
