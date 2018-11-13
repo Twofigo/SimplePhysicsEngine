@@ -6,14 +6,14 @@ function setup()
     var mat = new physics.Material();
     
 	var geo = new physics.Polygon();
-	geo.vertices = [
+	geo.setVertices([
 	{x:-14,y:20},
 	{x:14,y:20},
 	{x:20,y:0},
 	{x:14,y:-20},
 	{x:-14,y:-20},
 	{x:-20,y:0},
-	];
+	]);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
     obj.material = mat;
@@ -24,12 +24,12 @@ function setup()
 	ins.add(obj);
 	
 	var geo = new physics.Polygon();
-	geo.vertices = [
+	geo.setVertices([
 	{x:-20,y:-20},
 	{x:-20,y:20},
 	{x:20,y:20},
 	{x:20,y:-20},
-	];
+	]);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
     obj.material = mat;
@@ -42,12 +42,12 @@ function setup()
 	
 	// floor;
 	var geo = new physics.Polygon();
-	geo.vertices = [
+	geo.setVertices([
 	{x:-800,y:-100},
 	{x:800,y:-100},
 	{x:800,y:100},
 	{x:-800,y:100},
-	];
+	]);
 	
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
@@ -68,12 +68,12 @@ function setup()
 	
 	// left wall
 	var geo = new physics.Polygon();
-	geo.vertices = [
+	geo.setVertices([
 	{x:-100,y:-800},
 	{x:100,y:-800},
 	{x:100,y:800},
 	{x:-100,y:800},
-	];
+	]);
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
     obj.material = mat;

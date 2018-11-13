@@ -32,12 +32,6 @@ var physics = (function(){
         
         return this;
     }
-    Vector.prototype.copy = function( vector ){
-        this.x = vector.x;
-        this.y = vector.y;
-        
-        return this;	
-    }
     Vector.prototype.add = function(vector){
         this.x += vector.x;
         this.y += vector.y;
@@ -216,7 +210,7 @@ var physics = (function(){
     Scene.prototype.drawEntity = function(entity, canvas=this.canvas){
         if (entity.geometry instanceof Polygon){
             this.ctx.beginPath();
-            for(var vertex of entity.geometry.getVertices()){
+            for(var vertex of entity.geometry.iterateVertices()){
                 vertex.rotate(entity.angle).add(entity.position);
                 this.ctx.lineTo(vertex.x * this.zoom, vertex.y * this.zoom)
             }
@@ -293,25 +287,31 @@ var physics = (function(){
     }
     Polygon.prototype.clone = function(){	
         var obj = new Polygon();
-        for(var vertex of this.getVertices())
+        for(var vertex of this.iterateVertices())
         {
             obj.vertices.push(vertex);
         }
         return obj;
     }
-    Polygon.prototype.getVertices = function*(){	
-        for(var vertex of this.vertices)
-        {
-            yield (new Vector()).copy(vertex);
+    Polygon.prototype.setVertices = function(vertices){
+        this.vertices = [];
+        for (v of vertices){
+            this.vertices.push(new Vector(v.x, v.y));
         }
     }
-    Polygon.prototype.getEdges = function*(){
+    Polygon.prototype.iterateVertices = function*(){	
+        for(var vertex of this.vertices)
+        {
+            yield vertex.clone();
+        }
+    }
+    Polygon.prototype.iterateEdges = function*(){
         var line = new Line();
         line.pointA=false;
         line.pointB=false;
         var startPoint=	false;
         
-        for(var vertex of this.getVertices())
+        for(var vertex of this.iterateVertices())
         {
             if (line.pointB===false)
             {
@@ -329,8 +329,7 @@ var physics = (function(){
     }
     Polygon.prototype.moveOrigin = function(offset){
        for (vertex of this.vertices){
-           vertex.x+=offset.x;
-           vertex.y+=offset.y;
+           vertex.add(offset);
        }
     }
     
@@ -541,10 +540,10 @@ var physics = (function(){
         var pointB = false;
         
         main:
-        for(var lineA of bodyA.geometry.getEdges())
+        for(var lineA of bodyA.geometry.iterateEdges())
         {
             lineA.rotate(bodyA.angle).add(bodyA.position);
-            for(var lineB of bodyB.geometry.getEdges())
+            for(var lineB of bodyB.geometry.iterateEdges())
             {
                 lineB.rotate(bodyB.angle).add(bodyB.position);
                 var cordinate = lineA.intersect(lineB);
@@ -585,7 +584,7 @@ var physics = (function(){
             ).subtract(pointA
             ).project(collision.normal)
             
-            for(var vertex of obj.geometry.getVertices())
+            for(var vertex of obj.geometry.iterateVertices())
             {
                 vertex.rotate(obj.angle
                 ).add(obj.position);
@@ -627,7 +626,7 @@ var physics = (function(){
         };
         
         var originOffset = new Vector();
-        for( line of geometry.getEdges() )
+        for( line of geometry.iterateEdges() )
         {
             // relative cordinate !!!
             
