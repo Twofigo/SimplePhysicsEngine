@@ -107,29 +107,7 @@ var physics = (function(){
         }
         
         // collide others
-        for (var k1=0; k1<this.rigidBodies.length; k1++)
-        {
-            var objA = this.rigidBodies[k1];
-            for (var k2=k1+1; k2<this.rigidBodies.length; k2++)
-            {
-                var objB = this.rigidBodies[k2];
-                
-                if (objA.stationary && objB.stationary) continue;
-                
-                var collision = collisionTests.polyPoly(
-                this.rigidBodies[k1],
-                this.rigidBodies[k2]
-                );
-                
-                if (collision)
-                {
-                    if (!objA.collidable) continue;
-                    if (!objB.collidable) continue;
-                    collision.resolveCollision();
-                    collision.correctCollision();
-                }
-            }		
-        }
+        collisionTests.testAll(this.rigidBodies);
         
         if (this.timestamp !== timestamp) this.update(timestamp);
     }
@@ -346,7 +324,6 @@ var physics = (function(){
         
         this.gravity			= false;
         this.stationary			= false;
-        this.collidable			= true;
     }
     RigidBody.prototype = Object.create(Entity.prototype);
     RigidBody.prototype.setPosition = function(x = 0, y = 0, angle = 0){
@@ -389,7 +366,6 @@ var physics = (function(){
         this.torque = 0;
     }
     RigidBody.prototype.applyImpulse = function(coordinate, impulse){
-        if (!this.collidable) return;
         if (this.stationary) return;
         
         //linear
@@ -526,6 +502,20 @@ var physics = (function(){
     }
     
     var collisionTests = function(){};
+    collisionTests.prototype.testAll = function(rigidBodies){
+        for (var k1=0; k1<rigidBodies.length; k1++){
+            var bodyA = rigidBodies[k1];
+            for (var k2=k1+1; k2<rigidBodies.length; k2++){
+                var bodyB = rigidBodies[k2];
+                if (bodyA.stationary && bodyB.stationary) continue;
+                var collision = collisionTests.polyPoly(bodyA,bodyB);
+                if (collision){
+                    collision.resolveCollision();
+                    collision.correctCollision();
+                }
+            }		
+        }
+    }
     collisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
         var pointB = false;
