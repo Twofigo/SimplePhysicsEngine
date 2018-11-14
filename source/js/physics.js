@@ -415,13 +415,15 @@ var physics = (function(){
         this.force.reverse()
         //this.bodyB.addForceInPoint(this.force, this.positionB);
         
+        var relativeV = this.bodyA.getVelocity(this.point
+        ).subtract(this.bodyB.getVelocity(this.point));
         
     }
     Constraint.prototype.correct = function(){}
     
     var Collision = function Collision(){
-        this.objA				= false;
-        this.objB				= false;
+        this.bodyA				= false;
+        this.bodyB				= false;
         this.normal				= false;
         this.point				= false;
         this.offsetA			= false;
@@ -429,44 +431,44 @@ var physics = (function(){
     }
     Collision.prototype.resolve = function(){	
         
-        var relativeV = this.objA.getVelocity(this.point
-        ).subtract(this.objB.getVelocity(this.point));
+        var relativeV = this.bodyA.getVelocity(this.point
+        ).subtract(this.bodyB.getVelocity(this.point));
         
         if (relativeV.dot(this.normal)>0) return;
 
         var rApn = this.point.clone(
-        ).subtract(this.objA.position 
+        ).subtract(this.bodyA.position 
         ).cross(this.normal);
 
         var rBpn = this.point.clone(
-        ).subtract(this.objB.position
+        ).subtract(this.bodyB.position
         ).cross(this.normal);
         
         var totalMass = 0;
-        totalMass +=	this.objA.stationary?0:(1/this.objA.mass);
-        totalMass +=	this.objB.stationary?0:(1/this.objB.mass);
-        totalMass +=	this.objA.stationary?0:(rApn * rApn) / this.objA.inertia;
-        totalMass +=	this.objB.stationary?0:(rBpn * rBpn) / this.objB.inertia;
+        totalMass +=	this.bodyA.stationary?0:(1/this.bodyA.mass);
+        totalMass +=	this.bodyB.stationary?0:(1/this.bodyB.mass);
+        totalMass +=	this.bodyA.stationary?0:(rApn * rApn) / this.bodyA.inertia;
+        totalMass +=	this.bodyB.stationary?0:(rBpn * rBpn) / this.bodyB.inertia;
         
-        var e = (this.objA.material.restitution + this.objB.material.restitution)/2;
+        var e = (this.bodyA.material.restitution + this.bodyB.material.restitution)/2;
          
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
         
-        this.objA.applyImpulse(this.point, impulse);
-        this.objB.applyImpulse(this.point, impulse.reverse());
+        this.bodyA.applyImpulse(this.point, impulse);
+        this.bodyB.applyImpulse(this.point, impulse.reverse());
 
         //friction
         
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
-        var relativeV = this.objA.getVelocity(this.point
-        ).subtract(this.objB.getVelocity(this.point));
+        var relativeV = this.bodyA.getVelocity(this.point
+        ).subtract(this.bodyB.getVelocity(this.point));
         
         var mu = Math.sqrt(
-        this.objA.material.staticFriction*this.objA.material.staticFriction + 
-        this.objB.material.staticFriction*this.objB.material.staticFriction
+        this.bodyA.material.staticFriction*this.bodyA.material.staticFriction + 
+        this.bodyB.material.staticFriction*this.bodyB.material.staticFriction
         );
         
         var frictionImpulse;
@@ -484,13 +486,13 @@ var physics = (function(){
         {
             // dunamic friction
             frictionImpulse = tangent.clone().scale(-j * Math.sqrt(
-            this.objA.material.dynamicFriction*this.objA.material.dynamicFriction + 
-            this.objB.material.dynamicFriction*this.objB.material.dynamicFriction
+            this.bodyA.material.dynamicFriction*this.bodyA.material.dynamicFriction + 
+            this.bodyB.material.dynamicFriction*this.bodyB.material.dynamicFriction
             ));
         }
         
-        this.objA.applyImpulse(this.point, frictionImpulse);
-        this.objB.applyImpulse(this.point, frictionImpulse.reverse());
+        this.bodyA.applyImpulse(this.point, frictionImpulse);
+        this.bodyB.applyImpulse(this.point, frictionImpulse.reverse());
     }
     Collision.prototype.correct = function(){
         const percent = 0.2;
@@ -501,18 +503,18 @@ var physics = (function(){
         if (this.offsetA) correction += this.offsetA.length();
         if (this.offsetB) correction += this.offsetB.length();
         
-        //correction /= (this.objA.mass+this.objB.mass);
+        //correction /= (this.bodyA.mass+this.bodyB.mass);
         correction *= percent;
         
         v.scale(correction);
         
         if (this.offsetA)
         {
-            this.objA.position.add(this.offsetA.scale(percent));
+            this.bodyA.position.add(this.offsetA.scale(percent));
         }
         if (this.offsetB)
         {
-            this.objB.position.add(this.offsetB.scale(percent));
+            this.bodyB.position.add(this.offsetB.scale(percent));
         }
     }
     
@@ -561,15 +563,15 @@ var physics = (function(){
         if (!pointA || !pointB) return false;
         
         var collision = new Collision();
-        collision.objA = bodyA;
-        collision.objB = bodyB;
+        collision.bodyA = bodyA;
+        collision.bodyB = bodyB;
         
         collision.normal = pointB.clone(
         ).subtract(pointA
         ).normalize(
         ).perp();
          
-        if (collision.objA.position.clone(
+        if (collision.bodyA.position.clone(
         ).subtract(pointA
         ).dot(collision.normal
         )<0)
@@ -579,7 +581,7 @@ var physics = (function(){
         
         var totalOffset = 0;
         collision.point = new Vector();
-        for (var obj = collision.objA;; obj= collision.objB)
+        for (var obj = collision.bodyA;; obj= collision.bodyB)
         {
             var maxOffset = false;
             var center = obj.position.clone(
@@ -604,7 +606,7 @@ var physics = (function(){
                     maxOffset = v;
                 }
             }
-            if (obj===collision.objA) {
+            if (obj===collision.bodyA) {
                 if (maxOffset) collision.offsetA = maxOffset.reverse();
             }
             else
