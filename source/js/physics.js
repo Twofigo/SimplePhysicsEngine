@@ -516,6 +516,12 @@ var physics = (function(){
             }		
         }
     }
+    collisionTests.prototype.bodyAtPoint(rigidBodies,point){
+        for (body of rigidBodies)
+        {
+            if (pointInPoly(body, point)) return body;
+        }
+    }
     collisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
         var pointB = false;
