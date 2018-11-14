@@ -414,28 +414,33 @@ var physics = (function(){
         
         this.normal = new Vector();
         
-        this.force = false;
-        this.relativeV = false;
-        this.offset = false;
+        this.relOffset = false;
+        this.relVelocity = false;
+        this.relForce = false;
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        if (this.force)
+        if (this.relOffset)
         {
-            this.bodyA.addForceInPoint(this.force, this.positionA);
-            this.force.reverse()
-            this.bodyB.addForceInPoint(this.force, this.positionB);
+            this.bodyA.position.add(offset);
+            this.bodyA.position.add(offset.reverse());
         }
-        if (this.relativeV)
+        if (this.relVelocity)
         {
             var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
-            var j = -this.relativeV.dot(this.normal)/totalMass
+            var j = -this.velocity.dot(this.normal)/totalMass
             var impulse = this.normal.clone(
             ).scale(j);
             
-            this.bodyA.applyImpulse(this.positionA, impulse);
-            this.bodyB.applyImpulse(this.positionB, impulse.reverse());
+            this.bodyA.applyImpulse(this.positionA, this.impulse);
+            this.bodyB.applyImpulse(this.positionB, this.impulse.reverse());
         }
+        if (this.relForce)
+        {
+            this.bodyA.applyForce(this.positionA, this.force);
+            this.bodyB.applyForce(this.positionB, this.force.reverse());
+        }
+        
     }
     
     var Collision = function Collision(){
