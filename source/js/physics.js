@@ -375,6 +375,13 @@ var physics = (function(){
         ).subtract(this.position);
         this.angularVelocity += temp.cross(impulse) / this.inertia;
     }
+    RigidBody.prototype.getVelocity = function(coordinate)
+    {
+        var radianA = coordinate.clone(
+        ).subtract(this.position);
+        return velocityA = this.velocity.clone(
+        ).add(radianA.clone().perp().scale(this.angularVelocity).reverse());
+    }
     RigidBody.prototype.addForce = function(force){
         this.force.add(force);
     }
@@ -392,6 +399,26 @@ var physics = (function(){
         this.geometry.moveOrigin(data.originOffset);
     }
     
+    var Constraint = function(bodyA, positionA, bodyB, positionA){
+        this.bodyA = bodyA;
+        this.bodyB = bodyB;
+        this.positionA = positionA;
+        this.positionB = positionB;
+        
+        this.offset = new Vector();
+        this.force = new Vector();
+        this.normal = new Vector();
+    }
+    Constraint.prototype.compute = function(){}
+    Constraint.prototype.resolve = function(){
+        //this.bodyA.addForceInPoint(this.force, this.positionA);
+        this.force.reverse()
+        //this.bodyB.addForceInPoint(this.force, this.positionB);
+        
+        
+    }
+    Constraint.prototype.correct = function(){}
+    
     var Collision = function Collision(){
         this.objA				= false;
         this.objB				= false;
@@ -400,28 +427,21 @@ var physics = (function(){
         this.offsetA			= false;
         this.offsetB			= false;
     }
-    Collision.prototype.resolveCollision = function(){	
-        //general
-        var radianA = this.point.clone(
-        ).subtract(this.objA.position);
-        var radianB = this.point.clone(
-        ).subtract(this.objB.position);
+    Collision.prototype.resolve = function(){	
         
-        //bounce
-        var velocityA = this.objA.velocity.clone(
-        ).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
-        var velocityB = this.objB.velocity.clone(
-        ).add(radianB.clone().perp().scale(this.objB.angularVelocity).reverse());
-        
-        var relativeV = velocityA.clone(
-        ).subtract(velocityB);
+        var relativeV = this.objA.getVelocity(this.point
+        ).subtract(this.objB.getVelocity(this.point));
         
         if (relativeV.dot(this.normal)>0) return;
+
+        var rApn = this.point.clone(
+        ).subtract(this.objA.position 
+        ).cross(this.normal);
+
+        var rBpn = this.point.clone(
+        ).subtract(this.objB.position
+        ).cross(this.normal);
         
-        var rApn = radianA.clone( 
-        ).cross(this.normal);
-        var rBpn = radianB.clone(
-        ).cross(this.normal);
         var totalMass = 0;
         totalMass +=	this.objA.stationary?0:(1/this.objA.mass);
         totalMass +=	this.objB.stationary?0:(1/this.objB.mass);
@@ -441,13 +461,8 @@ var physics = (function(){
         
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
-        velocityA = this.objA.velocity.clone(
-        ).add(radianA.clone().perp().scale(this.objA.angularVelocity).reverse());
-        velocityB = this.objB.velocity.clone(
-        ).add(radianB.clone().perp().scale(this.objB.angularVelocity).reverse());
-        
-        relativeV = velocityA.clone(
-        ).subtract(velocityB);
+        var relativeV = this.objA.getVelocity(this.point
+        ).subtract(this.objB.getVelocity(this.point));
         
         var mu = Math.sqrt(
         this.objA.material.staticFriction*this.objA.material.staticFriction + 
@@ -477,7 +492,7 @@ var physics = (function(){
         this.objA.applyImpulse(this.point, frictionImpulse);
         this.objB.applyImpulse(this.point, frictionImpulse.reverse());
     }
-    Collision.prototype.correctCollision = function(){
+    Collision.prototype.correct = function(){
         const percent = 0.2;
         const slop = 0.1;
         
@@ -510,16 +525,16 @@ var physics = (function(){
                 if (bodyA.stationary && bodyB.stationary) continue;
                 var collision = collisionTests.polyPoly(bodyA,bodyB);
                 if (collision){
-                    collision.resolveCollision();
-                    collision.correctCollision();
+                    collision.resolve();
+                    collision.correct();
                 }
             }		
         }
     }
-    collisionTests.prototype.bodyAtPoint(rigidBodies,point){
+    collisionTests.prototype.bodyAtPoint = function(rigidBodies, coordinate){
         for (body of rigidBodies)
         {
-            if (pointInPoly(body, point)) return body;
+            if (pointInPoly(body, coordinate)) return body;
         }
     }
     collisionTests.prototype.polyPoly = function(bodyA, bodyB){
@@ -602,9 +617,9 @@ var physics = (function(){
         
         return collision;
     }
-    collisionTests.prototype.pointInPoly = function(body, point){
+    collisionTests.prototype.pointInPoly = function(body, coordinate){
         var lineA = new Line();
-        lineA.pointA = point.clone();
+        lineA.pointA = coordinate.clone();
         lineB.pointB = body.position.clone();
         
         for(var lineB of body.geometry.iterateEdges())
