@@ -375,12 +375,19 @@ var physics = (function(){
         ).subtract(this.position);
         this.angularVelocity += temp.cross(impulse) / this.inertia;
     }
-    RigidBody.prototype.getVelocity = function(coordinate)
-    {
+    RigidBody.prototype.getVelocity = function(coordinate){
         var radianA = coordinate.clone(
         ).subtract(this.position);
         return velocityA = this.velocity.clone(
         ).add(radianA.clone().perp().scale(this.angularVelocity).reverse());
+    }
+    RigidBody.prototype.getInvMass = function(coordinate, normal){ // need to change name
+        if(this.stationary) return 0;
+        
+        var rApn = coordinate.clone(
+        ).subtract(this.position 
+        ).cross(normal);
+        return (1/this.mass) + (rApn * rApn) / this.inertia;
     }
     RigidBody.prototype.addForce = function(force){
         this.force.add(force);
@@ -411,15 +418,24 @@ var physics = (function(){
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        //this.bodyA.addForceInPoint(this.force, this.positionA);
+        this.bodyA.addForceInPoint(this.force, this.positionA);
         this.force.reverse()
-        //this.bodyB.addForceInPoint(this.force, this.positionB);
+        this.bodyB.addForceInPoint(this.force, this.positionB);
         
-        var relativeV = this.bodyA.getVelocity(this.point
-        ).subtract(this.bodyB.getVelocity(this.point));
+        var relativeV = this.bodyA.getVelocity(this.positionA
+        ).subtract(this.bodyB.getVelocity(this.positionB));
+        if (relativeV.dot(this.normal)>0) return;
         
+        var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
+        var j = -relativeV.dot(this.normal)/totalMass
+        var impulse = this.normal.clone(
+        ).scale(j);
+        
+        this.bodyA.applyImpulse(this.positionA, impulse);
+        this.bodyB.applyImpulse(this.positionB, impulse.reverse());
     }
-    Constraint.prototype.correct = function(){}
+    Constraint.prototype.correct = function(){
+    }
     
     var Collision = function Collision(){
         this.bodyA				= false;
@@ -433,25 +449,10 @@ var physics = (function(){
         
         var relativeV = this.bodyA.getVelocity(this.point
         ).subtract(this.bodyB.getVelocity(this.point));
-        
         if (relativeV.dot(this.normal)>0) return;
-
-        var rApn = this.point.clone(
-        ).subtract(this.bodyA.position 
-        ).cross(this.normal);
-
-        var rBpn = this.point.clone(
-        ).subtract(this.bodyB.position
-        ).cross(this.normal);
         
-        var totalMass = 0;
-        totalMass +=	this.bodyA.stationary?0:(1/this.bodyA.mass);
-        totalMass +=	this.bodyB.stationary?0:(1/this.bodyB.mass);
-        totalMass +=	this.bodyA.stationary?0:(rApn * rApn) / this.bodyA.inertia;
-        totalMass +=	this.bodyB.stationary?0:(rBpn * rBpn) / this.bodyB.inertia;
-        
+        var totalMass = this.bodyA.getInvMass(this.point, this.normal) + this.bodyB.getInvMass(this.point, this.normal);
         var e = (this.bodyA.material.restitution + this.bodyB.material.restitution)/2;
-         
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
@@ -496,17 +497,13 @@ var physics = (function(){
     }
     Collision.prototype.correct = function(){
         const percent = 0.2;
-        const slop = 0.1;
         
-        var v = this.normal.clone()
         var correction = 0;
         if (this.offsetA) correction += this.offsetA.length();
         if (this.offsetB) correction += this.offsetB.length();
-        
-        //correction /= (this.bodyA.mass+this.bodyB.mass);
         correction *= percent;
         
-        v.scale(correction);
+         var v = this.normal.clone().scale(correction);
         
         if (this.offsetA)
         {
