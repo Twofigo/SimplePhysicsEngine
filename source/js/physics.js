@@ -1,6 +1,6 @@
 var physics = (function(){
 
-   var Vector = function(x   = 0, y   = 0){
+    var Vector = function(x   = 0, y   = 0){
         this.x  = x;
         this.y  = y;
     }
@@ -218,122 +218,6 @@ var physics = (function(){
         this.ctx.fill();
     }
 
-    var InputTracker = function(){
-        this.canvas = false;
-        this.disabled = true;
-        this.canvasOffset = new Vector();
-        this.cursorPosition = new Vector();
-        this.cursorVelocity = new Vector();
-        this.timestamp = false;
-        
-        this.listeners = {};
-    }
-    InputTracker.prototype.set = function(canvas){
-        if (this.canvas) return;
-        this.canvas = canvas;
-        
-        var self = this;
-        this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
-        this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
-        this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
-        this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
-        this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
-        document.body.addEventListener("keydown", function(event){self.keyStart(event)});
-        document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
-    }
-    InputTracker.prototype.unset = function(){
-        return; // WIP
-    }
-    InputTracker.prototype.call = function(key, data=undefined){
-        if (!this.listeners[""+key]) return
-        
-        for (f of this.listeners[""+key].callouts){
-            f(data);
-        }
-    }
-    InputTracker.prototype.addListener = function(key, func){
-        if (!this.listeners[""+key]){
-            this.listeners[""+key] = {state:false, callouts:[]};
-        }
-        this.listeners[""+key].callouts.push(func);
-    }
-    InputTracker.prototype.removeListener = function(key, func) {
-        if (!this.listeners[""+key]) return
-        var index = this.listeners[""+key].callouts.indexOf(func);
-        if(index > -1) {
-            this.listeners[""+key].callouts.splice(index, 1);
-        }
-    }
-    InputTracker.prototype.enable = function(){
-        this.disabled = false;
-    }
-    InputTracker.prototype.disable = function(){
-        this.disabled = true;
-    }
-    InputTracker.prototype.cursorMove = function(event){
-        if(this.disabled)return;
-        
-       var data = {
-       position: new Vector(),
-       positionDelta: new Vector(),
-       velocity: new Vector()};
-       
-       var boxInfo = this.canvas.getBoundingClientRect();
-       
-       //event.touches[0].clientX;
-       //event.touches[0].clientY;
-       data.position.x=event.clientX-boxInfo.left;
-       data.position.y=event.clientY-boxInfo.top;
-       data.positionDelta=this.cursorPosition.subtract(data.position);
-       this.cursorPosition = data.position.clone();
-       data.velocity = this.cursorVelocity.scale(1/3
-       ).add(data.positionDelta.clone(
-       ).scale(1000/event.timeStamp-this.timestamp
-       ).scale(2/3)
-       );
-       this.cursorVelocity = data.velocity.clone();
-       
-       this.call("move", data);
-    }
-    InputTracker.prototype.cursorStart = function(event){
-        if(this.disabled)return;
-        
-        this.cursorMove(event);
-        var key = "m"+event.buttons;
-        if(!this.listeners[""+key]) return;
-        if(this.listeners[""+key].state) return;
-        this.listeners[""+key].state = true;
-        this.call(key, true)
-    }
-    InputTracker.prototype.cursorEnd = function(event){
-        if(this.disabled)return;
-        
-        this.cursorMove(event);
-        var key = "m"+event.buttons;
-        if(!this.listeners[""+key]) return;
-        if(!this.listeners[""+key].state) return;
-        this.listeners[""+key].state = false;
-        this.call(key, false)
-    }
-    InputTracker.prototype.keyStart = function(event){
-        if(this.disabled)return;
-        
-        var key = event.keyCode;
-        if(!this.listeners[""+key]) return;
-        if(this.listeners[""+key].state) return;
-        this.listeners[""+key].state = true;
-        this.call(key, true)
-    }
-    InputTracker.prototype.keyEnd = function(event){
-        if(this.disabled)return;
-        
-        var key = event.keyCode;
-        if(!this.listeners[""+key]) return;
-        if(!this.listeners[""+key].state) return;
-        this.listeners[""+key].state = false;
-        this.call(key, false)
-    }
-    
     var Material = function(){    
         this.density			= 0.1;
         this.staticFriction		= 0.2;
@@ -722,6 +606,17 @@ var physics = (function(){
         
         return collision;
     }
+    collisionTests.prototype.pointInPoly = function(body, point){
+        var lineA = new Line();
+        lineA.pointA = point.clone();
+        lineB.pointB = body.position.clone();
+        
+        for(var lineB of body.geometry.iterateEdges())
+        {
+            lineB.rotate(body.angle).add(body.position);
+            if (lineA.intersect(lineB)) return true; 
+        }
+    }
     collisionTests = new collisionTests();    
     
     function compilePolygon(geometry, material){
@@ -767,7 +662,127 @@ var physics = (function(){
         }
         return data;
     }
+    
+    // extended -------------------------------------------------------------------------------------------------
+    
+    var InputTracker = function(){
+        this.canvas = false;
+        this.disabled = true;
+        this.canvasOffset = new Vector();
+        this.cursorPosition = new Vector();
+        this.cursorVelocity = new Vector();
+        this.timestamp = false;
         
+        this.listeners = {};
+    }
+    InputTracker.prototype.set = function(canvas){
+        if (this.canvas) return;
+        this.canvas = canvas;
+        
+        var self = this;
+        this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
+        this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
+        this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
+        this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
+        this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
+        document.body.addEventListener("keydown", function(event){self.keyStart(event)});
+        document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
+    }
+    InputTracker.prototype.unset = function(){
+        return; // WIP
+    }
+    InputTracker.prototype.call = function(key, data=undefined){
+        if (!this.listeners[""+key]) return
+        
+        for (f of this.listeners[""+key].callouts){
+            f(data);
+        }
+    }
+    InputTracker.prototype.addListener = function(key, func){
+        if (!this.listeners[""+key]){
+            this.listeners[""+key] = {state:false, callouts:[]};
+        }
+        this.listeners[""+key].callouts.push(func);
+    }
+    InputTracker.prototype.removeListener = function(key, func) {
+        if (!this.listeners[""+key]) return
+        var index = this.listeners[""+key].callouts.indexOf(func);
+        if(index > -1) {
+            this.listeners[""+key].callouts.splice(index, 1);
+        }
+    }
+    InputTracker.prototype.enable = function(){
+        this.disabled = false;
+    }
+    InputTracker.prototype.disable = function(){
+        this.disabled = true;
+    }
+    InputTracker.prototype.cursorMove = function(event){
+        if(this.disabled)return;
+        
+       var data = {
+       position: new Vector(),
+       positionDelta: new Vector(),
+       velocity: new Vector()};
+       
+       var boxInfo = this.canvas.getBoundingClientRect();
+       
+       //event.touches[0].clientX;
+       //event.touches[0].clientY;
+       data.position.x=event.clientX-boxInfo.left;
+       data.position.y=event.clientY-boxInfo.top;
+       data.positionDelta=this.cursorPosition.subtract(data.position);
+       this.cursorPosition = data.position.clone();
+       data.velocity = this.cursorVelocity.scale(1/3
+       ).add(data.positionDelta.clone(
+       ).scale(1000/event.timeStamp-this.timestamp
+       ).scale(2/3)
+       );
+       this.cursorVelocity = data.velocity.clone();
+       
+       this.call("move", data);
+    }
+    InputTracker.prototype.cursorStart = function(event){
+        if(this.disabled)return;
+        
+        this.cursorMove(event);
+        var key = "m"+event.buttons;
+        if(!this.listeners[""+key]) return;
+        if(this.listeners[""+key].state) return;
+        this.listeners[""+key].state = true;
+        this.call(key, true)
+    }
+    InputTracker.prototype.cursorEnd = function(event){
+        if(this.disabled)return;
+        
+        this.cursorMove(event);
+        var key = "m"+event.buttons;
+        if(!this.listeners[""+key]) return;
+        if(!this.listeners[""+key].state) return;
+        this.listeners[""+key].state = false;
+        this.call(key, false)
+    }
+    InputTracker.prototype.keyStart = function(event){
+        if(this.disabled)return;
+        
+        var key = event.keyCode;
+        if(!this.listeners[""+key]) return;
+        if(this.listeners[""+key].state) return;
+        this.listeners[""+key].state = true;
+        this.call(key, true)
+    }
+    InputTracker.prototype.keyEnd = function(event){
+        if(this.disabled)return;
+        
+        var key = event.keyCode;
+        if(!this.listeners[""+key]) return;
+        if(!this.listeners[""+key].state) return;
+        this.listeners[""+key].state = false;
+        this.call(key, false)
+    }
+    
+    
+    
     return{
         InputTracker: InputTracker,
         Scene: Scene,
