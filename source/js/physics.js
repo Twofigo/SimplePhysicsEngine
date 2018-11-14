@@ -1,7 +1,4 @@
 var physics = (function(){
-   function getInstance(){
-       return new Scene();
-   }
 
    var Vector = function(x   = 0, y   = 0){
         this.x  = x;
@@ -86,8 +83,9 @@ var physics = (function(){
         this.ctx			= false;
         this.timestamp      = false;
     
-        this.zoom			= 1;
-            
+        this.zoomFactor			= 1.5;
+        this.zoom               = false; 
+       
         this.gravity = new Vector();	
         this.enteties	= [];
         this.rigidBodies	= [];
@@ -148,18 +146,18 @@ var physics = (function(){
         }
     }
     Scene.prototype.setSize = function(){
-        this.canvas.width	= window.innerWidth;
-        this.canvas.height	= window.innerHeight;
+        var boxInfo = this.canvas.getBoundingClientRect();
+        this.canvas.width	= boxInfo.width;
+        this.canvas.height	= boxInfo.height;
         
         this.ctx.restore();
         this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
         this.ctx.save();
         
-        if (this.canvas.width < this.canvas.height)
-            this.zoom = window.innerWidth /1000;
+        if (boxInfo.width < boxInfo.height)
+            this.zoom = this.zoomFactor*boxInfo.width /1000;
         else
-            this.zoom = window.innerHeight / 1000;
-        
+            this.zoom = this.zoomFactor*boxInfo.height / 1000;
         
         this.draw();
     }
@@ -167,7 +165,7 @@ var physics = (function(){
         if (!timestamp)
         {
             this.timestamp = false;
-            return 16;
+            return 10;
         }
         if (!this.timestamp){
             this.timestamp = timestamp;
@@ -175,16 +173,10 @@ var physics = (function(){
         }
         var time = timestamp - this.timestamp;
         
-        
-        if (time > 250)
+        if (time > 100)
         {
             this.timestamp = false;
             return 10;
-        }
-        if (time > 50)
-        {
-            return 50;
-            this.timestamp+=50;
         }
         
         this.timestamp = timestamp;
@@ -227,7 +219,7 @@ var physics = (function(){
     }
 
     var InputTracker = function(){
-        this.canvas = false
+        this.canvas = false;
         this.disabled = true;
         this.canvasOffset = new Vector();
         this.cursorPosition = new Vector();
@@ -280,6 +272,28 @@ var physics = (function(){
     }
     InputTracker.prototype.cursorMove = function(event){
         if(this.disabled)return;
+        
+       var data = {
+       position: new Vector(),
+       positionDelta: new Vector(),
+       velocity: new Vector()};
+       
+       var boxInfo = this.canvas.getBoundingClientRect();
+       
+       //event.touches[0].clientX;
+       //event.touches[0].clientY;
+       data.position.x=event.clientX-boxInfo.left;
+       data.position.y=event.clientY-boxInfo.top;
+       data.positionDelta=this.cursorPosition.subtract(data.position);
+       this.cursorPosition = data.position.clone();
+       data.velocity = this.cursorVelocity.scale(1/3
+       ).add(data.positionDelta.clone(
+       ).scale(1000/event.timeStamp-this.timestamp
+       ).scale(2/3)
+       );
+       this.cursorVelocity = data.velocity.clone();
+       
+       this.call("move", data);
     }
     InputTracker.prototype.cursorStart = function(event){
         if(this.disabled)return;
@@ -287,6 +301,7 @@ var physics = (function(){
         this.cursorMove(event);
         var key = "m"+event.buttons;
         if(!this.listeners[""+key]) return;
+        if(this.listeners[""+key].state) return;
         this.listeners[""+key].state = true;
         this.call(key, true)
     }
@@ -296,6 +311,7 @@ var physics = (function(){
         this.cursorMove(event);
         var key = "m"+event.buttons;
         if(!this.listeners[""+key]) return;
+        if(!this.listeners[""+key].state) return;
         this.listeners[""+key].state = false;
         this.call(key, false)
     }
@@ -304,6 +320,7 @@ var physics = (function(){
         
         var key = event.keyCode;
         if(!this.listeners[""+key]) return;
+        if(this.listeners[""+key].state) return;
         this.listeners[""+key].state = true;
         this.call(key, true)
     }
@@ -312,6 +329,7 @@ var physics = (function(){
         
         var key = event.keyCode;
         if(!this.listeners[""+key]) return;
+        if(!this.listeners[""+key].state) return;
         this.listeners[""+key].state = false;
         this.call(key, false)
     }

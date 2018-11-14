@@ -97,6 +97,7 @@ function setup()
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
+    tracker.addListener("move", function(d){console.log(d)});
     
 	window.requestAnimationFrame(mainloop);
 }
