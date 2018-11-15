@@ -83,12 +83,13 @@ var physics = (function(){
         this.ctx			= false;
         this.timestamp      = false;
     
-        this.zoomFactor			= 1.5;
+        this.zoomFactor			= 1.2;
         this.zoom               = false; 
        
         this.gravity = new Vector();	
         this.enteties	= [];
         this.rigidBodies	= [];
+        this.constraints = [];
     }   
     Scene.prototype.setup = function(canvas){
         if (!this.canvas) this.canvas = canvas;
@@ -100,8 +101,11 @@ var physics = (function(){
       	var time = this.getTimeDelta(timestamp);
         if (!time) return;
         
-        for(var obj of this.rigidBodies)
-        {
+        for(var con of this.constraints){
+            con.compute();
+            con.resolve();
+        }
+        for(var obj of this.rigidBodies){
             obj.addForce(this.gravity.clone().scale(obj.mass));
             obj.update(time);
         }
@@ -175,6 +179,10 @@ var physics = (function(){
         else if (obj instanceof Entity)
         {
             this.enteties.push(obj)
+        }
+        else if (obj instanceof Constraint)
+        {
+            this.constraints.push(obj)
         }
     }
     Scene.prototype.drawEntity = function(entity, canvas=this.canvas){
@@ -406,7 +414,7 @@ var physics = (function(){
         this.geometry.moveOrigin(data.originOffset);
     }
     
-    var Constraint = function(bodyA, positionA, bodyB, positionA){
+    var Constraint = function(bodyA, positionA, bodyB, positionB){
         this.bodyA = bodyA;
         this.bodyB = bodyB;
         this.positionA = positionA;
@@ -414,21 +422,22 @@ var physics = (function(){
         
         this.normal = new Vector();
         
-        this.relOffset = false;
+        this.offset = false;
         this.relVelocity = false;
         this.relForce = false;
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        if (this.relOffset)
+        /*
+        if (this.offset)
         {
-            this.bodyA.position.add(offset);
-            this.bodyA.position.add(offset.reverse());
-        }
+            this.bodyA.position.add(this.offset);
+            this.bodyB.position.add(this.offset.reverse());
+        }*/
         if (this.relVelocity)
         {
             var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
-            var j = -this.velocity.dot(this.normal)/totalMass
+            var j = -this.relVelocity.dot(this.normal)/totalMass
             var impulse = this.normal.clone(
             ).scale(j);
             
@@ -437,10 +446,20 @@ var physics = (function(){
         }
         if (this.relForce)
         {
-            this.bodyA.applyForce(this.positionA, this.force);
-            this.bodyB.applyForce(this.positionB, this.force.reverse());
+            this.bodyA.applyForce(this.positionA, this.relForce);
+            this.bodyB.applyForce(this.positionB, this.relForce.reverse());
         }
         
+    }
+    
+    var PivotPoint = function(bodyA, positionA, bodyB, positionA){
+        Constraint.call(this,bodyA, positionA, bodyB, positionA);
+    }
+    PivotPoint.prototype = Object.create(Constraint.prototype);
+    PivotPoint.prototype.compute = function(){
+        this.offset = this.positionB.clone().add(this.bodyB.position).subtract(
+        this.positionA.clone().add(this.bodyA.position)
+        );
     }
     
     var Collision = function Collision(){
@@ -799,12 +818,13 @@ var physics = (function(){
     
     
     
-    return{
+    return {
         InputTracker: InputTracker,
         Scene: Scene,
         Vector: Vector,
         Material: Material,
         Polygon: Polygon,
+        PivotPoint: PivotPoint,
         RigidBody: RigidBody
-    }
+    };
 })();
