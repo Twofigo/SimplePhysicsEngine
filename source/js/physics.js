@@ -106,7 +106,7 @@ var physics = (function(){
             con.resolve();
         }
         for(var obj of this.rigidBodies){
-            obj.addForce(this.gravity.clone().scale(obj.mass));
+            if(obj.gravity) obj.addForce(this.gravity.clone().scale(obj.mass));
             obj.update(time);
         }
         
@@ -423,28 +423,17 @@ var physics = (function(){
         this.normal = new Vector();
         
         this.offset = false;
-        this.relVelocity = false;
-        this.relForce = false;
+        this.impulse = false;
+        this.force = false;
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        /*
-        if (this.offset)
-        {
-            this.bodyA.position.add(this.offset);
-            this.bodyB.position.add(this.offset.reverse());
-        }*/
-        if (this.relVelocity)
-        {
-            var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
-            var j = -this.relVelocity.dot(this.normal)/totalMass
-            var impulse = this.normal.clone(
-            ).scale(j);
-            
+        if (this.impulse)
+        { 
             this.bodyA.applyImpulse(this.positionA, this.impulse);
             this.bodyB.applyImpulse(this.positionB, this.impulse.reverse());
         }
-        if (this.relForce)
+        if (this.force)
         {
             this.bodyA.applyForce(this.positionA, this.relForce);
             this.bodyB.applyForce(this.positionB, this.relForce.reverse());
@@ -452,14 +441,29 @@ var physics = (function(){
         
     }
     
-    var PivotPoint = function(bodyA, positionA, bodyB, positionA){
-        Constraint.call(this,bodyA, positionA, bodyB, positionA);
+    var PivotPoint = function(bodyA, positionA, bodyB, positionB){
+        Constraint.call(this, bodyA, positionA, bodyB, positionB);
     }
     PivotPoint.prototype = Object.create(Constraint.prototype);
     PivotPoint.prototype.compute = function(){
-        this.offset = this.positionB.clone().add(this.bodyB.position).subtract(
-        this.positionA.clone().add(this.bodyA.position)
+        this.offset = this.positionB.clone(
+        ).add(this.bodyB.position.clone(
+        ).rotate(this.bodyB.angle)
+        ).subtract(
+        this.positionA.clone(
+        ).add(this.bodyA.position.clone(
+        ).rotate(this.bodyA.angle))
         );
+        
+        this.normal = this.offset.normalize();
+        
+        var relativeV = this.bodyA.getVelocity(this.positionA
+        ).subtract(this.bodyB.getVelocity(this.positionB));
+        var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + 
+        this.bodyB.getInvMass(this.positionB, this.normal);
+        var j = -relativeV.dot(this.normal)/totalMass
+        
+        this.impulse = this.normal.clone().scale(j);
     }
     
     var Collision = function Collision(){

@@ -17,7 +17,7 @@ function setup()
 	var obj1 = new physics.RigidBody()
 	obj1.geometry = geo;
     obj1.material = mat;
-	obj1.setPosition(0,40,0);
+	obj1.setPosition(0,0,0);
 	obj1.setVelocity(0,0,0);
 	obj1.gravity=true;
     obj1.compile();
@@ -34,8 +34,8 @@ function setup()
 	obj.geometry = geo;
     obj.material = mat;
 	obj.setPosition(200,0,0.5);
-	obj.setVelocity(-200,0,0);
-	obj.gravity=true;
+	obj.setVelocity(0,0,0);
+	obj.gravity=false;
 	obj.compile();
     ins.add(obj);
 	
@@ -90,7 +90,7 @@ function setup()
 	obj.compile();
     ins.add(obj);
     
-    var obj = new physics.PivotPoint(obj1, new physics.Vector(20,0), obj2, new physics.Vector(800,-20));
+    var obj = new physics.PivotPoint(obj1, new physics.Vector(20,0), obj2, new physics.Vector(500,0));
     ins.add(obj);
 	
     
