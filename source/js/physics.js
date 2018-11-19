@@ -406,6 +406,14 @@ var physics = (function(){
         ).subtract(this.position);
         this.angularVelocity += temp.cross(impulse) / this.inertia;
     }
+    RigidBody.prototype.applyForce = function(coordinate, force){
+        if (this.stationary) return;        
+        //linear
+        this.addForce(force);
+        var temp = coordinate.clone(
+        ).subtract(this.position);
+        this.addTorque(temp.cross(force));
+    }
     RigidBody.prototype.getVelocity = function(coordinate){
         var radianA = coordinate.clone(
         ).subtract(this.position);
@@ -453,8 +461,8 @@ var physics = (function(){
     Constraint.prototype.resolve = function(){
         if (this.force)
         {
-            this.bodyA.addForce(this.force);
-            this.bodyB.addForce(this.force.reverse());
+            this.bodyA.applyForce(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), this.force);
+            this.bodyB.applyForce(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), this.force.reverse());
         }
         
     }
