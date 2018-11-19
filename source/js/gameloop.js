@@ -17,7 +17,7 @@ function setup()
 	var obj1 = new physics.RigidBody()
 	obj1.geometry = geo;
     obj1.material = mat;
-	obj1.setPosition(0,0,0);
+	obj1.setPosition(0,0,1);
 	obj1.setVelocity(0,0,0);
 	obj1.gravity=true;
     obj1.compile();
@@ -90,7 +90,7 @@ function setup()
 	obj.compile();
     ins.add(obj);
     
-    var obj = new physics.PivotPoint(obj1, new physics.Vector(20,0), obj2, new physics.Vector(500,0));
+    var obj = new physics.Rope(obj1, new physics.Vector(0,0), obj2, new physics.Vector(600,0),100,1000);
     ins.add(obj);
 	
     
@@ -100,7 +100,7 @@ function setup()
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
-    tracker.addListener("move", function(d){console.log(d)});
+    //tracker.addListener("move", function(d){console.log(d)});
     
 	window.requestAnimationFrame(mainloop);
 }

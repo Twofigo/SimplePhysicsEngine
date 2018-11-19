@@ -126,6 +126,10 @@ var physics = (function(){
         {
             this.drawEntity(obj);
         }
+        for(obj of this.constraints)
+        {
+            this.drawConstraint(obj);
+        }
     }
     Scene.prototype.setSize = function(){
         var boxInfo = this.canvas.getBoundingClientRect();
@@ -196,6 +200,25 @@ var physics = (function(){
             this.ctx.fill();
         }
         this.drawPoint(entity.position, "white");
+    }
+    Scene.prototype.drawConstraint = function(constraint, canvas=this.canvas){
+        if (constraint instanceof Rope){
+            this.ctx.beginPath();
+           
+           var p1 = constraint.bodyA.position.clone(
+            ).add(constraint.positionA.clone(
+            ).rotate(constraint.bodyA.angle))
+            var p2 = constraint.bodyB.position.clone(
+            ).add(constraint.positionB.clone(
+            ).rotate(constraint.bodyB.angle))
+            
+            this.ctx.moveTo(p1.x * this.zoom, p1.y * this.zoom)
+            this.ctx.lineTo(p2.x * this.zoom, p2.y * this.zoom)
+            
+            this.ctx.strokeStyle = "yellow";
+            this.ctx.strokeWidth = 20;
+            this.ctx.stroke();
+        }
     }
     Scene.prototype.drawPoint = function(position, color="black", size=1){
         this.ctx.beginPath();
@@ -428,42 +451,36 @@ var physics = (function(){
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        if (this.impulse)
-        { 
-            this.bodyA.applyImpulse(this.positionA, this.impulse);
-            this.bodyB.applyImpulse(this.positionB, this.impulse.reverse());
-        }
         if (this.force)
         {
-            this.bodyA.applyForce(this.positionA, this.relForce);
-            this.bodyB.applyForce(this.positionB, this.relForce.reverse());
+            this.bodyA.addForce(this.force);
+            this.bodyB.addForce(this.force.reverse());
         }
         
     }
     
-    var PivotPoint = function(bodyA, positionA, bodyB, positionB){
+    var Rope = function(bodyA, positionA, bodyB, positionB, length=20, forcePerDist=1){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
+        this.ropeLength = length;
+        this.forcePerDist = forcePerDist;
     }
-    PivotPoint.prototype = Object.create(Constraint.prototype);
-    PivotPoint.prototype.compute = function(){
-        this.offset = this.positionB.clone(
-        ).add(this.bodyB.position.clone(
+    Rope.prototype = Object.create(Constraint.prototype);
+    Rope.prototype.compute = function(){
+        this.offset = this.bodyB.position.clone(
+        ).add(this.positionB.clone(
         ).rotate(this.bodyB.angle)
         ).subtract(
-        this.positionA.clone(
-        ).add(this.bodyA.position.clone(
+        this.bodyA.position.clone(
+        ).add(this.positionA.clone(
         ).rotate(this.bodyA.angle))
         );
         
-        this.normal = this.offset.normalize();
+        this.normal = this.offset.clone().normalize();
         
-        var relativeV = this.bodyA.getVelocity(this.positionA
-        ).subtract(this.bodyB.getVelocity(this.positionB));
-        var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + 
-        this.bodyB.getInvMass(this.positionB, this.normal);
-        var j = -relativeV.dot(this.normal)/totalMass
-        
-        this.impulse = this.normal.clone().scale(j);
+        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
+        else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
+            
+        this.force = this.offset.clone().scale(this.forcePerDist);
     }
     
     var Collision = function Collision(){
@@ -828,7 +845,8 @@ var physics = (function(){
         Vector: Vector,
         Material: Material,
         Polygon: Polygon,
-        PivotPoint: PivotPoint,
+        //PivotPoint: PivotPoint,
+        Rope: Rope,
         RigidBody: RigidBody
     };
 })();
