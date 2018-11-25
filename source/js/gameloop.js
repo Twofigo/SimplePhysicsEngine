@@ -1,4 +1,5 @@
 var ins;
+var mrGrabby;
 function setup()
 {
     ins = new physics.Scene()
@@ -14,14 +15,14 @@ function setup()
 	{x:-14,y:-20},
 	{x:-20,y:0},
 	]);
-	var obj1 = new physics.RigidBody()
-	obj1.geometry = geo;
-    obj1.material = mat;
-	obj1.setPosition(0,0,0);
-	obj1.setVelocity(-50,0,0);
-	obj1.gravity=false;
-    obj1.compile();
-	ins.add(obj1);
+	var obj = new physics.RigidBody()
+	obj.geometry = geo;
+    obj.material = mat;
+	obj.setPosition(0,0,0);
+	obj.setVelocity(-50,0,8);
+	obj.gravity=false;
+    obj.compile();
+	ins.add(obj);
 	
 	var geo = new physics.Polygon();
 	geo.setVertices([
@@ -30,14 +31,14 @@ function setup()
 	{x:20,y:20},
 	{x:20,y:-20},
 	]);
-	var obj2 = new physics.RigidBody()
-	obj2.geometry = geo;
-    obj2.material = mat;
-	obj2.setPosition(200,0,0.5);
-	obj2.setVelocity(0,0,0);
-	obj2.gravity=false;
-	obj2.compile();
-    ins.add(obj2);
+	var obj = new physics.RigidBody()
+	obj.geometry = geo;
+    obj.material = mat;
+	obj.setPosition(200,0,0.5);
+	obj.setVelocity(0,0,0);
+	obj.gravity=false;
+	obj.compile();
+    ins.add(obj);
 	
     // floor;
 	var geo = new physics.Polygon();
@@ -90,19 +91,47 @@ function setup()
 	obj.compile();
     ins.add(obj);
     
-    var obj = new physics.Rope(obj1, new physics.Vector(0,-15), obj2, new physics.Vector(20,0),100,1000);
-    ins.add(obj);
-	
-    
 	ins.gravity.y=300;
 	ins.setup(document.getElementById("gameboard"));
     
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
-    //tracker.addListener("move", function(d){console.log(d)});
+    
+    mrGrabby = new Grabber();
+    
+    tracker.addListener("move", function(d){mrGrabby.move(d)});
+    tracker.addListener("m1", function(d){mrGrabby.grabAndDrop(d)});
+    
     
 	window.requestAnimationFrame(mainloop);
+}
+
+var Grabber = function(){
+    this.obj = new physics.RigidBody();
+    this.obj.stationary = true;
+    
+    this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),0,1000);
+    ins.add(this.constraint);
+}
+Grabber.prototype.grabAndDrop = function(data){
+    if(data.state)
+    {
+        var cordinate = data.position.subtract(ins.position).scale(1/ins.zoom);
+        var body = ins.bodyAtPoint(cordinate);
+        if(!body) return;
+        this.constraint.bodyB = body;
+        this.constraint.positionB = cordinate.subtract(body.position)
+    }
+    if(!data.state)
+    {
+        this.constraint.bodyB = this.obj;
+        this.constraint.positionB.set();
+    }
+}
+Grabber.prototype.move = function(data){
+    this.obj.velocity = data.velocity.scale(ins.zoom);
+    this.obj.position = data.position.subtract(ins.position).scale(1/ins.zoom);
 }
 
 function mainloop(timestamp){

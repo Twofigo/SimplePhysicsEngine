@@ -1,6 +1,9 @@
 var physics = (function(){
 
     var Vector = function(x   = 0, y   = 0){
+       this.set(x,y);
+    }
+    Vector.prototype.set = function(x   = 0, y   = 0){
         this.x  = x;
         this.y  = y;
     }
@@ -84,7 +87,8 @@ var physics = (function(){
         this.timestamp      = false;
     
         this.zoomFactor			= 1.2;
-        this.zoom               = false; 
+        this.position           = new Vector();
+        this.zoom               = false;
        
         this.gravity = new Vector();	
         this.enteties	= [];
@@ -137,7 +141,8 @@ var physics = (function(){
         this.canvas.height	= boxInfo.height;
         
         this.ctx.restore();
-        this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
+        this.position.set(this.canvas.width/2, this.canvas.height/2);
+        this.ctx.translate(this.position.x, this.position.y);
         this.ctx.save();
         
         if (boxInfo.width < boxInfo.height)
@@ -226,7 +231,13 @@ var physics = (function(){
         this.ctx.fillRect((position.x-size)*this.zoom, (position.y-size)*this.zoom, 2*size*this.zoom, 2*size*this.zoom);
         this.ctx.fill();
     }
-
+    Scene.prototype.bodyAtPoint = function(coordinate){
+        for (body of this.rigidBodies)
+        {
+            if (collisionTests.pointInPoly(body, coordinate)) return body;
+        }
+    }
+    
     var Material = function(){    
         this.density			= 0.1;
         this.staticFriction		= 0.2;
@@ -259,7 +270,7 @@ var physics = (function(){
         return this;
     }
     Line.prototype.intersect = function(line){	
-        var cordinate = new Vector();
+        var coordinate = new Vector();
             
         var s1_x = this.pointB.x - this.pointA.x;     
         var s1_y = this.pointB.y - this.pointA.y;   
@@ -274,10 +285,10 @@ var physics = (function(){
         
         if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
         {
-            cordinate.x = this.pointA.x + (t * s1_x);
-            cordinate.y = this.pointA.y + (t * s1_y);
+            coordinate.x = this.pointA.x + (t * s1_x);
+            coordinate.y = this.pointA.y + (t * s1_y);
             
-            return cordinate;
+            return coordinate;
         }
         return false; // No collision
     }
@@ -569,8 +580,8 @@ var physics = (function(){
         }
     }
     
-    var collisionTests = function(){};
-    collisionTests.prototype.testAll = function(rigidBodies){
+    var CollisionTests = function(){};
+    CollisionTests.prototype.testAll = function(rigidBodies){
         for (var k1=0; k1<rigidBodies.length; k1++){
             var bodyA = rigidBodies[k1];
             for (var k2=k1+1; k2<rigidBodies.length; k2++){
@@ -584,13 +595,7 @@ var physics = (function(){
             }		
         }
     }
-    collisionTests.prototype.bodyAtPoint = function(rigidBodies, coordinate){
-        for (body of rigidBodies)
-        {
-            if (pointInPoly(body, coordinate)) return body;
-        }
-    }
-    collisionTests.prototype.polyPoly = function(bodyA, bodyB){
+    CollisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
         var pointB = false;
         
@@ -601,11 +606,11 @@ var physics = (function(){
             for(var lineB of bodyB.geometry.iterateEdges())
             {
                 lineB.rotate(bodyB.angle).add(bodyB.position);
-                var cordinate = lineA.intersect(lineB);
-                if (!cordinate) continue; 
-                if (!pointA)pointA = cordinate
+                var coordinate = lineA.intersect(lineB);
+                if (!coordinate) continue; 
+                if (!pointA)pointA = coordinate
                 else {
-                    pointB = cordinate;
+                    pointB = coordinate;
                     break main;
                 }
             }
@@ -670,18 +675,19 @@ var physics = (function(){
         
         return collision;
     }
-    collisionTests.prototype.pointInPoly = function(body, coordinate){
+    CollisionTests.prototype.pointInPoly = function(body, coordinate){
         var lineA = new Line();
         lineA.pointA = coordinate.clone();
-        lineB.pointB = body.position.clone();
+        lineA.pointB = body.position.clone();
         
         for(var lineB of body.geometry.iterateEdges())
         {
             lineB.rotate(body.angle).add(body.position);
-            if (lineA.intersect(lineB)) return true; 
+            if (lineA.intersect(lineB)) return false; 
         }
+        return true
     }
-    collisionTests = new collisionTests();    
+    var collisionTests = new CollisionTests();    
     
     function compilePolygon(geometry, material){
         var data = {
@@ -694,7 +700,7 @@ var physics = (function(){
         var originOffset = new Vector();
         for( line of geometry.iterateEdges() )
         {
-            // relative cordinate !!!
+            // relative coordinate !!!
             
             var v = line.pointB.clone(
             ).subtract(line.pointA);
@@ -734,10 +740,14 @@ var physics = (function(){
         this.disabled = true;
         this.canvasOffset = new Vector();
         this.cursorPosition = new Vector();
+        this.cursorPositionDelta = new Vector();
         this.cursorVelocity = new Vector();
         this.timestamp = false;
-        
         this.listeners = {};
+        
+        this.addListener("m1");
+        this.addListener("m2");
+        this.addListener("move");
     }
     InputTracker.prototype.set = function(canvas){
         if (this.canvas) return;
@@ -747,15 +757,15 @@ var physics = (function(){
         this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
         this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
         this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
-        this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
-        this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
+        //this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
+        //this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
         document.body.addEventListener("keydown", function(event){self.keyStart(event)});
         document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
     }
     InputTracker.prototype.unset = function(){
         return; // WIP
     }
-    InputTracker.prototype.call = function(key, data=undefined){
+    InputTracker.prototype.notify = function(key, data=undefined){
         if (!this.listeners[""+key]) return
         
         for (f of this.listeners[""+key].callouts){
@@ -766,7 +776,7 @@ var physics = (function(){
         if (!this.listeners[""+key]){
             this.listeners[""+key] = {state:false, callouts:[]};
         }
-        this.listeners[""+key].callouts.push(func);
+        if (func) this.listeners[""+key].callouts.push(func);
     }
     InputTracker.prototype.removeListener = function(key, func) {
         if (!this.listeners[""+key]) return
@@ -781,68 +791,126 @@ var physics = (function(){
     InputTracker.prototype.disable = function(){
         this.disabled = true;
     }
-    InputTracker.prototype.cursorMove = function(event){
-        if(this.disabled)return;
-        
-       var data = {
-       position: new Vector(),
-       positionDelta: new Vector(),
-       velocity: new Vector()};
-       
-       var boxInfo = this.canvas.getBoundingClientRect();
-       
-       //event.touches[0].clientX;
-       //event.touches[0].clientY;
-       data.position.x=event.clientX-boxInfo.left;
-       data.position.y=event.clientY-boxInfo.top;
-       data.positionDelta=this.cursorPosition.subtract(data.position);
-       this.cursorPosition = data.position.clone();
-       data.velocity = this.cursorVelocity.scale(1/3
-       ).add(data.positionDelta.clone(
-       ).scale(1000/event.timeStamp-this.timestamp
-       ).scale(2/3)
-       );
-       this.cursorVelocity = data.velocity.clone();
-       
-       this.call("move", data);
+    InputTracker.prototype.getKeyState = function(key){
+        if(!this.listeners[""+key]) return false;
+        return this.listeners[""+key].state; 
     }
-    InputTracker.prototype.cursorStart = function(event){
-        if(this.disabled)return;
-        
-        this.cursorMove(event);
-        var key = "m"+event.buttons;
-        if(!this.listeners[""+key]) return;
-        if(this.listeners[""+key].state) return;
-        this.listeners[""+key].state = true;
-        this.call(key, true)
-    }
-    InputTracker.prototype.cursorEnd = function(event){
-        if(this.disabled)return;
-        
-        this.cursorMove(event);
-        var key = "m"+event.buttons;
-        if(!this.listeners[""+key]) return;
-        if(!this.listeners[""+key].state) return;
-        this.listeners[""+key].state = false;
-        this.call(key, false)
+    InputTracker.prototype.keyIsSet = function(key){
+        if(!this.listeners[""+key]) return false;
+        if(this.listeners[""+key].callouts.length === 0) return false;
+        return true;
     }
     InputTracker.prototype.keyStart = function(event){
         if(this.disabled)return;
         
-        var key = event.keyCode;
-        if(!this.listeners[""+key]) return;
-        if(this.listeners[""+key].state) return;
+        var key = event.keyCode; 
+        if(!this.keyIsSet(key)) return;
+        if(this.getKeyState(key)) return;
         this.listeners[""+key].state = true;
-        this.call(key, true)
+        tthis.notify(key, {state:true});
     }
     InputTracker.prototype.keyEnd = function(event){
         if(this.disabled)return;
         
         var key = event.keyCode;
-        if(!this.listeners[""+key]) return;
-        if(!this.listeners[""+key].state) return;
+        if(!this.keyIsSet(key)) return;
+        if(!this.getKeyState(key)) return;
         this.listeners[""+key].state = false;
-        this.call(key, false)
+        this.notify(key, {state:false});
+    }
+    InputTracker.prototype.cursorMove = function(event){
+       if(this.disabled)return;
+       
+       this.calcCursorVelocity(event);
+       var data = {
+       state: true,
+       position: this.cursorPosition.clone(),
+       positionDelta: this.cursorPositionDelta.clone(),
+       velocity: this.cursorVelocity.clone()};
+       
+       this.notify("move", data);
+    }
+    InputTracker.prototype.cursorStart = function(event){
+        if(this.disabled)return;
+       
+        var key = event.buttons;
+        if (key === 3){
+            if (this.getKeyState("m1") && this.getKeyState("m2"))return;
+            if (this.getKeyState("m2")) key = 1;
+            else if (this.getKeyState("m1")) key = 2;  
+        }
+        key = "m"+key;
+        
+        if(!this.keyIsSet(key)) return;
+        if(this.getKeyState(key)) return;
+        
+        this.listeners[""+key].state = true;
+        this.calcCursorVelocity(event);
+        
+        var data = {
+        state: true,
+        position: this.cursorPosition.clone(),
+        positionDelta: this.cursorPositionDelta.clone(),
+        velocity: this.cursorVelocity.clone()};
+        
+        this.notify(key, data)
+    }
+    InputTracker.prototype.cursorEnd = function(event){
+        if(this.disabled)return;
+
+        var key = event.buttons;
+        if (!this.getKeyState("m1") && !this.getKeyState("m2"))return;
+        
+        if (key){
+            if (key === 2) key = 1
+            else if (key === 1) key = 2 
+        }
+        else if (!key){
+            if (this.getKeyState("m2")) key = 2;
+            else if (this.getKeyState("m1")) key = 1; 
+        }
+        key = "m"+key;
+        
+        if(!this.keyIsSet(key)) return;
+        if(!this.getKeyState(key)) return;
+        
+        this.listeners[""+key].state = false;
+        this.calcCursorVelocity(event);
+        
+        var data = {
+        state: false,
+        position: this.cursorPosition.clone(),
+        positionDelta: this.cursorPositionDelta.clone(),
+        velocity: this.cursorVelocity.clone()};
+        
+        this.notify(key, data);
+    }
+    InputTracker.prototype.getCursorPos = function(event){
+       var boxInfo = this.canvas.getBoundingClientRect();
+       
+       //event.touches[0].clientX;
+       //event.touches[0].clientY;
+       return new Vector(
+       event.clientX-boxInfo.left,
+       event.clientY-boxInfo.top
+       );
+    }
+    InputTracker.prototype.calcCursorVelocity = function(event){
+       var position = this.getCursorPos(event);
+       
+       this.cursorPositionDelta=this.cursorPosition.subtract(position);
+       this.cursorPosition = position;
+       
+       if(!this.timestamp || timestamp>=100){
+           this.cursorVelocity.set(0,0);
+           this.timestamp = event.timestamp;
+           return;
+       }
+       this.cursorVelocity.scale(1/3
+       ).add(this.curosrPositionDelta.clone(
+       ).scale(1000/event.timeStamp-this.timestamp
+       ).scale(2/3)
+       );
     }
     
     
