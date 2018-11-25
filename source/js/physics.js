@@ -213,7 +213,7 @@ var physics = (function(){
         this.drawPoint(entity.position, "white");
     }
     Scene.prototype.drawConstraint = function(constraint, canvas=this.canvas){
-        if (constraint instanceof Rope){
+        if (constraint instanceof Rope || constraint instanceof StiffRope){
             this.ctx.beginPath();
            
            var p1 = constraint.bodyA.position.clone(
@@ -481,6 +481,17 @@ var physics = (function(){
             this.bodyA.applyForce(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), this.force);
             this.bodyB.applyForce(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), this.force.reverse());
         }
+        if (this.impulse)
+        {
+            this.bodyA.applyImpulse(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), this.impulse);
+            this.bodyB.applyImpulse(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), this.impulse.reverse());
+        }
+        if (this.offset)
+        {
+            const percent = 1;
+            //this.bodyA.position.add(this.offset.scale(percent));
+            this.bodyB.position.add(this.offset.scale(percent).reverse());
+        }
         
     }
     
@@ -492,6 +503,32 @@ var physics = (function(){
     Rope.prototype = Object.create(Constraint.prototype);
     Rope.prototype.compute = function(){
         this.offset = this.bodyB.position.clone(
+        ).add(
+        this.positionB.clone(
+        ).rotate(this.bodyB.angle)
+        ).subtract(
+        this.bodyA.position.clone(
+        ).add(
+        this.positionA.clone(
+        ).rotate(this.bodyA.angle)
+        )
+        );
+        
+        this.normal = this.offset.clone().normalize();
+        
+        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
+        else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
+            
+        this.force = this.offset.clone().scale(this.forcePerDist);
+    }
+    
+    var StiffRope = function(bodyA, positionA, bodyB, positionB, length=20){
+        Constraint.call(this, bodyA, positionA, bodyB, positionB);
+        this.ropeLength = length;
+    }
+    StiffRope.prototype = Object.create(Constraint.prototype);
+    StiffRope.prototype.compute = function(){
+        this.offset = this.bodyB.position.clone(
         ).add(this.positionB.clone(
         ).rotate(this.bodyB.angle)
         ).subtract(
@@ -502,10 +539,21 @@ var physics = (function(){
         
         this.normal = this.offset.clone().normalize();
         
-        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
+        if(this.offset.length()<this.ropeLength) this.offset = false;
         else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
+        
+        if (this.offset)
+        {
+            var relativeV = this.bodyA.getVelocity(this.positionA
+            ).subtract(this.bodyB.getVelocity(this.positionB));
+            if (relativeV.dot(this.normal)>0) return;
             
-        this.force = this.offset.clone().scale(this.forcePerDist);
+            var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
+            this.impulse = this.normal.clone(
+            ).scale(-relativeV.dot(this.normal)/totalMass);
+        }
+        else this.impulse = false;
+            
     }
     
     var Collision = function Collision(){
@@ -568,13 +616,6 @@ var physics = (function(){
     }
     Collision.prototype.correct = function(){
         const percent = 0.2;
-        
-        var correction = 0;
-        if (this.offsetA) correction += this.offsetA.length();
-        if (this.offsetB) correction += this.offsetB.length();
-        correction *= percent;
-        
-         var v = this.normal.clone().scale(correction);
         
         if (this.offsetA)
         {
@@ -926,6 +967,7 @@ var physics = (function(){
         Polygon: Polygon,
         //PivotPoint: PivotPoint,3
         Rope: Rope,
+        StiffRope: StiffRope,
         RigidBody: RigidBody
     };
 })();

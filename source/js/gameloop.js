@@ -110,7 +110,7 @@ var Grabber = function(){
     this.obj = new physics.RigidBody();
     this.obj.stationary = true;
     
-    this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),0,1000);
+    this.constraint = new physics.StiffRope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),300,1000);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){
