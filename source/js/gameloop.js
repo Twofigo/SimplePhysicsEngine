@@ -121,7 +121,7 @@ Grabber.prototype.grabAndDrop = function(data){
         var body = ins.bodyAtPoint(cordinate);
         if(!body) return;
         this.constraint.bodyB = body;
-        this.constraint.positionB = cordinate.subtract(body.position)
+        this.constraint.positionB = cordinate.subtract(body.position).rotate(-body.angle)
     }
     if(!data.state)
     {
