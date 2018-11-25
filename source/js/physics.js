@@ -114,8 +114,14 @@ var physics = (function(){
             obj.update(time);
         }
         
-        // collide others
-        collisionTests.testAll(this.rigidBodies);
+        for (var k1=0; k1<this.rigidBodies.length; k1++){
+            var bodyA = this.rigidBodies[k1];
+            for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
+                var bodyB = this.rigidBodies[k2];
+                collisionTests.testCollision(bodyA,bodyB);
+            }		
+        }
+        
         
         if (this.timestamp !== timestamp) this.update(timestamp);
     }
@@ -237,7 +243,7 @@ var physics = (function(){
             if (collisionTests.pointInPoly(body, coordinate)) return body;
         }
     }
-    
+
     var Material = function(){    
         this.density			= 0.1;
         this.staticFriction		= 0.2;
@@ -581,19 +587,16 @@ var physics = (function(){
     }
     
     var CollisionTests = function(){};
-    CollisionTests.prototype.testAll = function(rigidBodies){
-        for (var k1=0; k1<rigidBodies.length; k1++){
-            var bodyA = rigidBodies[k1];
-            for (var k2=k1+1; k2<rigidBodies.length; k2++){
-                var bodyB = rigidBodies[k2];
-                if (bodyA.stationary && bodyB.stationary) continue;
-                var collision = collisionTests.polyPoly(bodyA,bodyB);
-                if (collision){
-                    collision.resolve();
-                    collision.correct();
-                }
-            }		
+    CollisionTests.prototype.testCollision = function(bodyA, bodyB){
+        if (bodyA.stationary && bodyB.stationary) return false;
+        var collision = this.bodyBody(bodyA,bodyB);
+        if (collision){
+            collision.resolve();
+            collision.correct();
         }
+    }
+    CollisionTests.prototype.bodyBody = function(bodyA, bodyB){
+        return this.polyPoly(bodyA,bodyB);
     }
     CollisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
@@ -921,7 +924,7 @@ var physics = (function(){
         Vector: Vector,
         Material: Material,
         Polygon: Polygon,
-        //PivotPoint: PivotPoint,
+        //PivotPoint: PivotPoint,3
         Rope: Rope,
         RigidBody: RigidBody
     };

@@ -19,7 +19,7 @@ function setup()
     obj.material = mat;
 	obj.setPosition(0,0,0);
 	obj.setVelocity(-50,0,8);
-	obj.gravity=false;
+	obj.gravity=true;
     obj.compile();
 	ins.add(obj);
 	
@@ -35,7 +35,7 @@ function setup()
     obj.material = mat;
 	obj.setPosition(200,0,0.5);
 	obj.setVelocity(0,0,0);
-	obj.gravity=false;
+	obj.gravity=true;
 	obj.compile();
     ins.add(obj);
 	
