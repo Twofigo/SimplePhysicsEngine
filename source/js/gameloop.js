@@ -1,5 +1,4 @@
 var ins;
-var mrGrabby;
 function setup()
 {
     ins = new physics.Scene()
@@ -98,10 +97,10 @@ function setup()
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
     
-    mrGrabby = new Grabber();
+    var g = new Grabber();
     
-    tracker.addListener("move", function(d){mrGrabby.move(d)});
-    tracker.addListener("m1", function(d){mrGrabby.grabAndDrop(d)});
+    tracker.addListener("move", function(d){g.move(d)});
+    tracker.addListener("m1", function(d){g.grabAndDrop(d)});
     
     
 	window.requestAnimationFrame(mainloop);
