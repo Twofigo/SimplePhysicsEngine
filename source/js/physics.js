@@ -490,7 +490,7 @@ var physics = (function(){
         {
             const percent = 1;
             //this.bodyA.position.add(this.offset.scale(percent));
-            this.bodyB.position.add(this.offset.scale(percent).reverse());
+            //this.bodyB.position.add(this.offset.scale(percent).reverse());
         }
         
     }
@@ -521,7 +521,7 @@ var physics = (function(){
             
         this.force = this.offset.clone().scale(this.forcePerDist);
     }
-    
+    /*
     var StiffRope = function(bodyA, positionA, bodyB, positionB, length=20){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
         this.ropeLength = length;
@@ -555,7 +555,7 @@ var physics = (function(){
         else this.impulse = false;
             
     }
-    
+    */
     var Collision = function Collision(){
         this.bodyA				= false;
         this.bodyB				= false;
@@ -967,7 +967,7 @@ var physics = (function(){
         Polygon: Polygon,
         //PivotPoint: PivotPoint,3
         Rope: Rope,
-        StiffRope: StiffRope,
+       // StiffRope: StiffRope,
         RigidBody: RigidBody
     };
 })();
