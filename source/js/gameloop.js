@@ -3,8 +3,6 @@ function setup()
 {
     ins = new physics.Scene()
     
-    var mat = new physics.Material();
-    
 	var geo = new physics.Polygon();
 	geo.setVertices([
 	{x:-14,y:20},
@@ -16,10 +14,8 @@ function setup()
 	]);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
-    obj.material = mat;
 	obj.setPosition(0,0,0);
 	obj.setVelocity(-50,0,8);
-	obj.gravity=true;
     obj.compile();
 	ins.add(obj);
 	
@@ -32,10 +28,8 @@ function setup()
 	]);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
-    obj.material = mat;
 	obj.setPosition(200,0,0.5);
 	obj.setVelocity(0,0,0);
-	obj.gravity=true;
 	obj.compile();
     ins.add(obj);
 	
@@ -50,19 +44,13 @@ function setup()
 	
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
-    obj.material = mat;
 	obj.setPosition(0,400);
-	obj.stationary=true;
-	obj.compile();
     ins.add(obj);
 
 	// roof
 	var obj = new physics.RigidBody();
 	obj.geometry = geo;
-    obj.material = mat;
 	obj.setPosition(0,-400);
-	obj.stationary=true;
-	obj.compile();
     ins.add(obj);
 	
 	// left wall
@@ -75,19 +63,13 @@ function setup()
 	]);
 	var obj = new physics.RigidBody();
 	obj.geometry = geo.clone();
-    obj.material = mat;
 	obj.setPosition(-500,0); 
-	obj.stationary=true;
-	obj.compile();
     ins.add(obj);
 	
 	// right wall
 	var obj = new physics.RigidBody();
 	obj.geometry = geo;
-    obj.material = mat;
 	obj.setPosition(500,0);
-	obj.stationary=true;
-	obj.compile();
     ins.add(obj);
     
 	ins.gravity.y=300;

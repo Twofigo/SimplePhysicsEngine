@@ -1,5 +1,4 @@
 var physics = (function(){
-
     var Vector = function(x   = 0, y   = 0){
        this.set(x,y);
     }
@@ -110,7 +109,7 @@ var physics = (function(){
             con.resolve();
         }
         for(var obj of this.rigidBodies){
-            if(obj.gravity) obj.addForce(this.gravity.clone().scale(obj.mass));
+            obj.addForce(this.gravity.clone().scale(obj.mass));
             obj.update(time);
         }
         
@@ -207,7 +206,7 @@ var physics = (function(){
                 vertex.rotate(entity.angle).add(entity.position);
                 this.ctx.lineTo(vertex.x * this.zoom, vertex.y * this.zoom)
             }
-            this.ctx.fillStyle = entity.material.surfaceColor;
+            this.ctx.fillStyle = entity.texture.surfaceColor;
             this.ctx.fill();
         }
         this.drawPoint(entity.position, "white");
@@ -245,16 +244,18 @@ var physics = (function(){
     }
 
     var Material = function(){    
-        this.density			= 0.1;
-        this.staticFriction		= 0.2;
-        this.dynamicFriction	= 0.17;
-        this.restitution		= 0.2;
-
+        this.density			= false;
+        this.staticFriction		= false;
+        this.dynamicFriction	= false;
+        this.restitution		= false;
+    }
+    
+    var Texture = function(){
         this.texture		= false;
         this.textureSize	= false;
-        this.surfaceColor	= 'black';
-        this.borderWidths   = 0;
-        this.borderColor    = 'black';
+        this.surfaceColor	= false;
+        this.borderWidth    = 0;
+        this.borderColor    = false;
     }
     
     var Line = function(pointA = new Vector(), pointB = new Vector()){
@@ -350,64 +351,76 @@ var physics = (function(){
        }
     }
     
-    var Entity = function(position = new Vector(),angle = 0,geometry = false,material = false){
-        this.position   = position;
+    var Entity = function(geometry = false, texture = default_texture){
+        this.position   = new Vector();
         this.angle      = 0;
         
         this.geometry   = geometry;
-        this.material   = material;
+        this.texture   = texture;
+    }
+    Entity.prototype.setPosition = function(x = 0, y = 0, angle = 0){
+        this.position.x = x;
+        this.position.y = y;
+        this.angle      = angle;
     }
     
-    var RigidBody = function(position = new Vector(),angle = 0,geometry = false,material = false){    
-        Entity.call(this, position, angle, geometry, material);
+    var RigidBody = function(geometry = false, texture = default_texture, material = default_material){    
+        Entity.call(this, geometry, texture);
+    
+        this.material = material;
     
         this.velocity			= new Vector();
         this.angularVelocity	= 0;
         this.force				= new Vector();
         this.torque				= 0;
         
-        this.inertia			= false;
-        this.mass				= false;
-        this.surfaceArea		= false;
+        this.inertia			= 0;
+        this.mass				= 0;
+        this.inv_mass           = 0;
+        this.inv_inertia        = 0;
+        this.surfaceArea		= 0;
         
-        this.gravity			= false;
-        this.stationary			= false;
+        this.moving             = true;
     }
     RigidBody.prototype = Object.create(Entity.prototype);
-    RigidBody.prototype.setPosition = function(x = 0, y = 0, angle = 0){
-        this.position.x = x;
-        this.position.y = y;
-        this.angle      = angle;
-    }
     RigidBody.prototype.setVelocity = function(vx = 0, vy = 0, angularVelocity = 0){
         if (vx=='undefined' || vy=='undefined') return;
-        if (this.stationary) return;
             
         this.velocity.x		= vx;
         this.velocity.y		= vy;
         this.angularVelocity= angularVelocity || 0;
     }
     RigidBody.prototype.update = function(time){
-        if (this.stationary) return;
         var t = time / 1000;
+        this.moving = false
         
-        //position
+        if (this.velocity.squareLength()){
+            this.moving = true;
+            this.position.add(this.velocity.clone().scale(t));
+        }
+        
         var accelleration = this.force.scale(1/this.mass);
+        if (accelleration.squareLength()){
+            moving = true;
+            this.position.add(accelleration.clone().scale(t * t * 0.5));
+            this.velocity.add(accelleration.scale(t));
+        }
         
-        this.position.add(this.velocity.clone().scale(t));
-        this.position.add(accelleration.clone().scale(t * t * 0.5));
+        if (this.angularVelocity){
+            this.moving = true;
+            this.angle += this.angularVelocity * t;
+        }
         
-        this.velocity.add(accelleration.scale(t));
-        
-        //angle
         var angularAccelleration = this.torque/this.inertia;
+        if (angularAccelleration){
+            this.moving = true;
+            this.angle += angularAccelleration * t * t * 0.5;
+            this.angularVelocity += angularAccelleration*t;
+        }
         
-        this.angle += this.angularVelocity * t;
-        this.angle += angularAccelleration * t * t * 0.5;
         if (this.angle > 2*Math.PI) this.angle%=2*Math.PI;
         if (this.angle < 0) this.angle=2*Math.PI + (this.angle%(2*Math.PI));
         
-        this.angularVelocity += angularAccelleration*t;
         
         // reset forces
         this.force.scale(0);
@@ -416,12 +429,11 @@ var physics = (function(){
     RigidBody.prototype.applyImpulse = function(coordinate, impulse){
         if (this.stationary) return;
         
-        //linear
-        this.velocity.add(impulse.clone().scale(1/this.mass));
+        this.velocity.add(impulse.clone().scale(this.inv_mass));
 
         var temp = coordinate.clone(
         ).subtract(this.position);
-        this.angularVelocity += temp.cross(impulse) / this.inertia;
+        this.angularVelocity += temp.cross(impulse) * this.inv_inertia;
     }
     RigidBody.prototype.applyForce = function(coordinate, force){
         if (this.stationary) return;        
@@ -431,19 +443,19 @@ var physics = (function(){
         ).subtract(this.position);
         this.addTorque(temp.cross(force));
     }
-    RigidBody.prototype.getVelocity = function(coordinate){
+    RigidBody.prototype.getVelocityInPoint = function(coordinate){
         var radianA = coordinate.clone(
         ).subtract(this.position);
         return velocityA = this.velocity.clone(
         ).add(radianA.clone().perp().scale(this.angularVelocity).reverse());
     }
-    RigidBody.prototype.getInvMass = function(coordinate, normal){ // need to change name
+    RigidBody.prototype.getInvMassInPoint = function(coordinate, normal){
         if(this.stationary) return 0;
         
         var rApn = coordinate.clone(
         ).subtract(this.position 
         ).cross(normal);
-        return (1/this.mass) + (rApn * rApn) / this.inertia;
+        return this.inv_mass + (rApn * rApn) * this.inv_inertia;
     }
     RigidBody.prototype.addForce = function(force){
         this.force.add(force);
@@ -458,6 +470,8 @@ var physics = (function(){
         }
         this.mass = data.mass;
         this.inertia = data.inertia;
+        this.inv_mass = 1/data.mass;
+        this.inv_inertia = 1/data.inertia;
         this.surfaceArea = data.surfaceArea;
         this.geometry.moveOrigin(data.originOffset);
     }
@@ -544,11 +558,11 @@ var physics = (function(){
         
         if (this.offset)
         {
-            var relativeV = this.bodyA.getVelocity(this.positionA
-            ).subtract(this.bodyB.getVelocity(this.positionB));
+            var relativeV = this.bodyA.getVelocityInPoint(this.positionA
+            ).subtract(this.bodyB.getVelocityInPoint(this.positionB));
             if (relativeV.dot(this.normal)>0) return;
             
-            var totalMass = this.bodyA.getInvMass(this.positionA, this.normal) + this.bodyB.getInvMass(this.positionB, this.normal);
+            var totalMass = this.bodyA.getInvMassInPoint(this.positionA, this.normal) + this.bodyB.getInvMassInPoint(this.positionB, this.normal);
             this.impulse = this.normal.clone(
             ).scale(-relativeV.dot(this.normal)/totalMass);
         }
@@ -566,11 +580,11 @@ var physics = (function(){
     }
     Collision.prototype.resolve = function(){	
         
-        var relativeV = this.bodyA.getVelocity(this.point
-        ).subtract(this.bodyB.getVelocity(this.point));
+        var relativeV = this.bodyA.getVelocityInPoint(this.point
+        ).subtract(this.bodyB.getVelocityInPoint(this.point));
         if (relativeV.dot(this.normal)>0) return;
         
-        var totalMass = this.bodyA.getInvMass(this.point, this.normal) + this.bodyB.getInvMass(this.point, this.normal);
+        var totalMass = this.bodyA.getInvMassInPoint(this.point, this.normal) + this.bodyB.getInvMassInPoint(this.point, this.normal);
         var e = (this.bodyA.material.restitution + this.bodyB.material.restitution)/2;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
@@ -583,8 +597,8 @@ var physics = (function(){
         
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
         
-        var relativeV = this.bodyA.getVelocity(this.point
-        ).subtract(this.bodyB.getVelocity(this.point));
+        var relativeV = this.bodyA.getVelocityInPoint(this.point
+        ).subtract(this.bodyB.getVelocityInPoint(this.point));
         
         var mu = Math.sqrt(
         this.bodyA.material.staticFriction*this.bodyA.material.staticFriction + 
@@ -629,7 +643,7 @@ var physics = (function(){
     
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
-        if (bodyA.stationary && bodyB.stationary) return false;
+        if (!(bodyA.moving || bodyB.moving)) return false;
         var collision = this.bodyBody(bodyA,bodyB);
         if (collision){
             collision.resolve();
@@ -957,8 +971,16 @@ var physics = (function(){
        );
     }
     
+    var default_texture = new Texture();
+    default_texture.surfaceColor = 'black';
+    default_texture.borderColor = 'black';
     
-    
+    var default_material = new Material();
+    default_material.density			= 0.1;
+    default_material.staticFriction		= 0.2;
+    default_material.dynamicFriction	= 0.17;
+    default_material.restitution		= 0.2;
+        
     return {
         InputTracker: InputTracker,
         Scene: Scene,
@@ -968,6 +990,8 @@ var physics = (function(){
         //PivotPoint: PivotPoint,3
         Rope: Rope,
        // StiffRope: StiffRope,
-        RigidBody: RigidBody
+        RigidBody: RigidBody,
+        default_texture: default_texture,
+        default_material: default_material,
     };
 })();
