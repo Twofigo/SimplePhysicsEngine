@@ -72,15 +72,22 @@ function setup()
 	obj.setPosition(500,0);
     ins.add(obj);
     
-	ins.gravity.y=0;
+	ins.gravity.y=300;
 	ins.setup(document.getElementById("gameboard"));
     
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
     
-    var g = new Grabber();
+
     
+    /*
+    var obj = new physics.RigidBody();
+    obj.setPosition(0,100);
+    this.constraint = new physics.StiffRope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),200);
+    ins.add(this.constraint);
+    */
+    var g = new Grabber();
     tracker.addListener("move", function(d){g.move(d)});
     tracker.addListener("m1", function(d){g.grabAndDrop(d)});
     
@@ -91,7 +98,7 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     
-    this.constraint = new physics.StiffRope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),10,1000);
+    this.constraint = new physics.StiffRope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),200,1000);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){
@@ -110,7 +117,8 @@ Grabber.prototype.grabAndDrop = function(data){
     }
 }
 Grabber.prototype.move = function(data){
-    this.obj.velocity = data.velocity.scale(1/ins.zoom);
+    console.log(data.velocity);
+    this.obj.velocity = data.velocity.scale(0.5).scale(1/ins.zoom);
     this.obj.position = data.position.subtract(ins.position).scale(1/ins.zoom);
 }
 
