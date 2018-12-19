@@ -19,6 +19,20 @@ function setup()
 	obj.setVelocity(-50,0,8);
     obj.compile();
 	ins.add(obj);
+    
+    var obj = new physics.RigidBody()
+	obj.geometry = geo.clone();
+	obj.setPosition(0,100,0);
+	obj.setVelocity(-10,20,0);
+    obj.compile();
+	ins.add(obj);
+    
+    var obj = new physics.RigidBody()
+	obj.geometry = geo.clone();
+	obj.setPosition(0,-100,0);
+	obj.setVelocity(0,65,-5);
+    obj.compile();
+	ins.add(obj);
 	
 	var geo = new physics.Polygon();
 	geo.setVertices([
@@ -29,8 +43,20 @@ function setup()
 	]);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
-	obj.setPosition(200,0,0.5);
+	obj.setPosition(-200,0,0.5);
 	obj.setVelocity(0,0,0);
+	obj.compile();
+    ins.add(obj);
+    
+    var obj = new physics.RigidBody()
+	obj.geometry = geo.clone();
+	obj.setPosition(-100,0,0.5);
+	obj.compile();
+    ins.add(obj);
+    
+    var obj = new physics.RigidBody()
+	obj.geometry = geo.clone();
+	obj.setPosition(200,0,0.5);
 	obj.compile();
     ins.add(obj);
 	
