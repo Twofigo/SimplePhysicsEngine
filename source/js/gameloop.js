@@ -98,7 +98,7 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     
-    this.constraint = new physics.StiffRope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),200,1000);
+    this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000,200);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){
@@ -117,7 +117,6 @@ Grabber.prototype.grabAndDrop = function(data){
     }
 }
 Grabber.prototype.move = function(data){
-    console.log(data.velocity);
     this.obj.velocity = data.velocity.scale(0.5).scale(1/ins.zoom);
     this.obj.position = data.position.subtract(ins.position).scale(1/ins.zoom);
 }
