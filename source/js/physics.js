@@ -488,7 +488,44 @@ var physics = (function(){
         this.impulse = false;
         this.force = false;
     }
-    Constraint.prototype.compute = function(){
+    Constraint.prototype.compute = function(){}
+    Constraint.prototype.resolve = function(){
+        
+    }
+    
+    var Rope = function(bodyA, positionA, bodyB, positionB, length=20, forcePerDist=1){
+        Constraint.call(this, bodyA, positionA, bodyB, positionB);
+        this.ropeLength = length;
+        this.forcePerDist = forcePerDist;
+    }
+    Rope.prototype = Object.create(Constraint.prototype);
+    Rope.prototype.compute = function(){
+        this.offset = this.bodyB.position.clone(
+        ).add(
+        this.positionB.clone(
+        ).rotate(this.bodyB.angle)
+        ).subtract(
+        this.bodyA.position.clone(
+        ).add(
+        this.positionA.clone(
+        ).rotate(this.bodyA.angle)
+        )
+        );
+        
+        this.normal = this.offset.clone().normalize();
+        
+        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
+        else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
+            
+        this.force = this.offset.clone().scale(this.forcePerDist);
+    }
+    
+    var StiffRope = function(bodyA, positionA, bodyB, positionB, length=20){
+        Constraint.call(this, bodyA, positionA, bodyB, positionB);
+        this.ropeLength = length;
+    }
+    StiffRope.prototype = Object.create(Constraint.prototype);
+    StiffRope.prototype.compute = function(){
         this.offset = this.bodyB.position.clone(
         ).add(this.positionB.clone(
         ).rotate(this.bodyB.angle)
@@ -499,79 +536,24 @@ var physics = (function(){
         );
         
         this.normal = this.offset.clone().normalize();
-    }
-    Constraint.prototype.resolve = function(){}
-    
-    var Rope = function(bodyA, positionA, bodyB, positionB, length=20, forcePerDist=1){
-        Constraint.call(this, bodyA, positionA, bodyB, positionB);
-        this.ropeLength = length;
-        this.forcePerDist = forcePerDist;
-    }
-    Rope.prototype = Object.create(Constraint.prototype);
-    Rope.prototype.compute = function(){
-        Constraint.prototype.compute.call(this);
         
-        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
-        else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
-            
-        this.force = this.offset.clone().scale(this.forcePerDist);
-    }
-    Rope.prototype.resolve = function(){
-        if (this.offset.squareLength() == 0) return
-        
-        var pointA = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position);
-        var pointB = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position);
-        
-        this.bodyA.applyForce(pointA, this.force);
-        this.bodyB.applyForce(pointB, this.force.reverse());
-    }
-    
-    var StiffRope = function(bodyA, positionA, bodyB, positionB, length=20){
-        Constraint.call(this, bodyA, positionA, bodyB, positionB);
-        this.ropeLength = length;
-    }
-    StiffRope.prototype = Object.create(Constraint.prototype);
-    StiffRope.prototype.compute = function(){
-        Constraint.prototype.compute.call(this);
-        
-        if(this.offset.length()<this.ropeLength) this.offset.scale(0);
-        else this.offset.subtract(this.normal.clone().scale(this.ropeLength))      
+        if(this.offset.length()<this.ropeLength) this.offset = false;
+        else this.offset.subtract(this.normal.clone().scale(this.ropeLength))     
     }
     StiffRope.prototype.resolve = function(){
-        if (this.offset.squareLength() == 0) return
         
-        var pointA = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position)
-        var pointB = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position)
+        if (!this.offset) return
+        var relativeV = this.bodyA.getVelocityInPoint(this.positionA
+        ).subtract(this.bodyB.getVelocityInPoint(this.positionB));
+        //if (relativeV.dot(this.normal)>0) return;
         
-        console.log(this.bodyA);
-        console.log(this.bodyB);
-        
-        console.log(this.offset.length());
-        console.log(this.normal);
-        
-        var relativeV = this.bodyA.getVelocityInPoint(pointA
-        ).subtract(this.bodyB.getVelocityInPoint(pointB));
-        console.log(pointA);
-        console.log(pointB);
-        console.log(this.bodyA.getVelocityInPoint(pointA));
-        console.log(this.bodyB.getVelocityInPoint(pointB));
-        console.log(relativeV);
-        console.log(relativeV.dot(this.normal));
-        if (relativeV.dot(this.normal)>0) return;
-        
-        
-        var totalMass = this.bodyA.getInvMassInPoint(pointA, this.normal) + this.bodyB.getInvMassInPoint(pointB, this.normal);
-        var j = -1.5*relativeV.dot(this.normal)/totalMass
+        var totalMass = this.bodyA.getInvMassInPoint(this.positionA, this.normal) + this.bodyB.getInvMassInPoint(this.positionB, this.normal);
+        var j = -relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
     
-        console.log(relativeV.dot(this.normal));
-        console.log(totalMass);
-        console.log(j);
-        console.log(impulse);
-        
-        this.bodyA.applyImpulse(pointA, impulse);
-        this.bodyB.applyImpulse(pointB, impulse.reverse());
+        this.bodyA.applyImpulse(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), impulse);
+        this.bodyB.applyImpulse(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), impulse.reverse());
         
         const percent = 0.1;
         //this.bodyA.position.add(this.offset.scale(percent));
@@ -964,21 +946,17 @@ var physics = (function(){
     InputTracker.prototype.calcCursorVelocity = function(event){
        var position = this.getCursorPos(event);
        
-       this.cursorPositionDelta=position.clone().subtract(this.cursorPosition);
+       this.cursorPositionDelta=this.cursorPosition.subtract(position);
        this.cursorPosition = position;
        
-       var timediff = event.timeStamp-this.timestamp;
-       this.timestamp = event.timeStamp;
-       
-       if(!this.timestamp || timediff>=1000){
-           console.log("reset");
+       if(!this.timestamp || timestamp>=100){
            this.cursorVelocity.set(0,0);
+           this.timestamp = event.timestamp;
            return;
        }
-   
        this.cursorVelocity.scale(1/3
-       ).add(this.cursorPositionDelta.clone(
-       ).scale(1000/timediff
+       ).add(this.curosrPositionDelta.clone(
+       ).scale(1000/event.timeStamp-this.timestamp
        ).scale(2/3)
        );
     }
