@@ -181,7 +181,7 @@ var physics = (function(){
     }
     Scene.prototype.compileAll = function(){
         for(obj of this.rigidBodies){
-            if (obj.mass !== false) continue;
+            if (obj.mass) continue;
             obj.compile();
         }
     }
@@ -394,13 +394,13 @@ var physics = (function(){
         var t = time / 1000;
         this.moving = false
         
-        if (this.velocity.squareLength()){
+        if (this.velocity.x || this.velocity.y){
             this.moving = true;
             this.position.add(this.velocity.clone().scale(t));
         }
         
-        var accelleration = this.force.scale(1/this.mass);
-        if (accelleration.squareLength()){
+        var accelleration = this.force.scale(this.inv_mass);
+        if (accelleration.x || accelleration.y){
             moving = true;
             this.position.add(accelleration.clone().scale(t * t * 0.5));
             this.velocity.add(accelleration.scale(t));
@@ -411,7 +411,7 @@ var physics = (function(){
             this.angle += this.angularVelocity * t;
         }
         
-        var angularAccelleration = this.torque/this.inertia;
+        var angularAccelleration = this.torque*this.inv_inertia;
         if (angularAccelleration){
             this.moving = true;
             this.angle += angularAccelleration * t * t * 0.5;
@@ -644,7 +644,7 @@ var physics = (function(){
     
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
-        if (!(bodyA.moving || bodyB.moving)) return false;
+        if(!(bodyA.moving || bodyB.moving)) return false;
         var collision = this.bodyBody(bodyA,bodyB);
         if (collision){
             collision.resolve();
