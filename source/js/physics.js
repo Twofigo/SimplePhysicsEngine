@@ -824,6 +824,10 @@ var physics = (function(){
         this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
         this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
         this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
+        
+        this.canvas.addEventListener("touchmove", function(event){self.cursorMove(event)});
+        this.canvas.addEventListener("touchstart", function(event){self.cursorStart(event)});
+        this.canvas.addEventListener("touchend", function(event){self.cursorEnd(event)});
         //this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
         //this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
         document.body.addEventListener("keydown", function(event){self.keyStart(event)});
@@ -953,14 +957,21 @@ var physics = (function(){
         this.notify(key, data);
     }
     InputTracker.prototype.getCursorPos = function(event){
-       var boxInfo = this.canvas.getBoundingClientRect();
+        var boxInfo = this.canvas.getBoundingClientRect();
        
-       //event.touches[0].clientX;
-       //event.touches[0].clientY;
-       return new Vector(
-       event.clientX-boxInfo.left,
-       event.clientY-boxInfo.top
-       );
+        try{
+            return new Vector(
+            event.touches[0].clientX-boxInfo.left,
+            event.touches[0].clientY-boxInfo.top
+            );
+        }
+        catch(err){
+            return new Vector(
+            event.clientX-boxInfo.left,
+            event.clientY-boxInfo.top
+            ); 
+        }
+
     }
     InputTracker.prototype.calcCursorVelocity = function(event){
        var position = this.getCursorPos(event);
