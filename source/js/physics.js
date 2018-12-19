@@ -490,22 +490,6 @@ var physics = (function(){
     }
     Constraint.prototype.compute = function(){}
     Constraint.prototype.resolve = function(){
-        if (this.force)
-        {
-            this.bodyA.applyForce(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), this.force);
-            this.bodyB.applyForce(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), this.force.reverse());
-        }
-        if (this.impulse)
-        {
-            this.bodyA.applyImpulse(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), this.impulse);
-            this.bodyB.applyImpulse(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), this.impulse.reverse());
-        }
-        if (this.offset)
-        {
-            const percent = 1;
-            //this.bodyA.position.add(this.offset.scale(percent));
-            //this.bodyB.position.add(this.offset.scale(percent).reverse());
-        }
         
     }
     
@@ -535,7 +519,7 @@ var physics = (function(){
             
         this.force = this.offset.clone().scale(this.forcePerDist);
     }
-    /*
+    
     var StiffRope = function(bodyA, positionA, bodyB, positionB, length=20){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
         this.ropeLength = length;
@@ -554,22 +538,28 @@ var physics = (function(){
         this.normal = this.offset.clone().normalize();
         
         if(this.offset.length()<this.ropeLength) this.offset = false;
-        else this.offset.subtract(this.normal.clone().scale(this.ropeLength)) 
-        
-        if (this.offset)
-        {
-            var relativeV = this.bodyA.getVelocityInPoint(this.positionA
-            ).subtract(this.bodyB.getVelocityInPoint(this.positionB));
-            if (relativeV.dot(this.normal)>0) return;
-            
-            var totalMass = this.bodyA.getInvMassInPoint(this.positionA, this.normal) + this.bodyB.getInvMassInPoint(this.positionB, this.normal);
-            this.impulse = this.normal.clone(
-            ).scale(-relativeV.dot(this.normal)/totalMass);
-        }
-        else this.impulse = false;
-            
+        else this.offset.subtract(this.normal.clone().scale(this.ropeLength))     
     }
-    */
+    StiffRope.prototype.resolve = function(){
+        
+        if (!this.offset) return
+        var relativeV = this.bodyA.getVelocityInPoint(this.positionA
+        ).subtract(this.bodyB.getVelocityInPoint(this.positionB));
+        //if (relativeV.dot(this.normal)>0) return;
+        
+        var totalMass = this.bodyA.getInvMassInPoint(this.positionA, this.normal) + this.bodyB.getInvMassInPoint(this.positionB, this.normal);
+        var j = -relativeV.dot(this.normal)/totalMass
+        var impulse = this.normal.clone(
+        ).scale(j);
+    
+        this.bodyA.applyImpulse(this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position), impulse);
+        this.bodyB.applyImpulse(this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position), impulse.reverse());
+        
+        const percent = 0.1;
+        //this.bodyA.position.add(this.offset.scale(percent));
+        //this.bodyB.position.add(this.offset.scale(percent).reverse());
+    }
+    
     var Collision = function Collision(){
         this.bodyA				= false;
         this.bodyB				= false;
@@ -989,7 +979,7 @@ var physics = (function(){
         Polygon: Polygon,
         //PivotPoint: PivotPoint,3
         Rope: Rope,
-       // StiffRope: StiffRope,
+        StiffRope: StiffRope,
         RigidBody: RigidBody,
         default_texture: default_texture,
         default_material: default_material,
