@@ -824,6 +824,10 @@ var physics = (function(){
         this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
         this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
         this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
+        
+        this.canvas.addEventListener("touchmove", function(event){self.cursorMove(event)});
+        this.canvas.addEventListener("touchstart", function(event){self.cursorStart(event)});
+        this.canvas.addEventListener("touchend", function(event){self.cursorEnd(event)});
         //this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
         //this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
         document.body.addEventListener("keydown", function(event){self.keyStart(event)});
@@ -900,14 +904,19 @@ var physics = (function(){
     InputTracker.prototype.cursorStart = function(event){
         if(this.disabled)return;
        
-        var key = event.buttons;
-        if (key === 3){
-            if (this.getKeyState("m1") && this.getKeyState("m2"))return;
-            if (this.getKeyState("m2")) key = 1;
-            else if (this.getKeyState("m1")) key = 2;  
+ 
+        if(event instanceof MouseEvent){
+            var key = event.buttons;
+            if (key === 3){
+                if (this.getKeyState("m1") && this.getKeyState("m2"))return;
+                if (this.getKeyState("m2")) key = 1;
+                else if (this.getKeyState("m1")) key = 2;  
+            }
+            key = "m"+key;
         }
-        key = "m"+key;
-        
+        else if(event instanceof TouchEvent){
+            key = "m1";
+        }
         if(!this.keyIsSet(key)) return;
         if(this.getKeyState(key)) return;
         
@@ -925,18 +934,23 @@ var physics = (function(){
     InputTracker.prototype.cursorEnd = function(event){
         if(this.disabled)return;
 
-        var key = event.buttons;
-        if (!this.getKeyState("m1") && !this.getKeyState("m2"))return;
-        
-        if (key){
-            if (key === 2) key = 1
-            else if (key === 1) key = 2 
+        if(event instanceof MouseEvent){
+            var key = event.buttons;
+            if (!this.getKeyState("m1") && !this.getKeyState("m2"))return;
+            
+            if (key){
+                if (key === 2) key = 1
+                else if (key === 1) key = 2 
+            }
+            else if (!key){
+                if (this.getKeyState("m2")) key = 2;
+                else if (this.getKeyState("m1")) key = 1; 
+            }
+            key = "m"+key;
         }
-        else if (!key){
-            if (this.getKeyState("m2")) key = 2;
-            else if (this.getKeyState("m1")) key = 1; 
+        else if(event instanceof TouchEvent){
+            key = "m1";
         }
-        key = "m"+key;
         
         if(!this.keyIsSet(key)) return;
         if(!this.getKeyState(key)) return;
@@ -953,21 +967,24 @@ var physics = (function(){
         this.notify(key, data);
     }
     InputTracker.prototype.getCursorPos = function(event){
-       var boxInfo = this.canvas.getBoundingClientRect();
+        var boxInfo = this.canvas.getBoundingClientRect();
        
-       //event.touches[0].clientX;
-       //event.touches[0].clientY;
-       return new Vector(
-       event.clientX-boxInfo.left,
-       event.clientY-boxInfo.top
-       );
+        if(event instanceof MouseEvent){
+            return new Vector(
+            event.clientX-boxInfo.left,
+            event.clientY-boxInfo.top
+            ); 
+        }
+        if(event instanceof TouchEvent){
+            if (event.touches.length == 0) return false
+            return new Vector(
+            event.touches[0].clientX-boxInfo.left,
+            event.touches[0].clientY-boxInfo.top
+            );
+        }
     }
     InputTracker.prototype.calcCursorVelocity = function(event){
-       var position = this.getCursorPos(event);
-       
-       this.cursorPositionDelta=position.clone().subtract(this.cursorPosition);
-       this.cursorPosition = position;
-       
+      
        var timediff = event.timeStamp-this.timestamp;
        if(!timediff) return;
        this.timestamp = event.timeStamp;
@@ -976,7 +993,13 @@ var physics = (function(){
            this.cursorVelocity.set(0,0);
            return;
        }
-   
+       
+       var position = this.getCursorPos(event);
+       
+       if (!position) return;
+       this.cursorPositionDelta = position.clone().subtract(this.cursorPosition);
+       this.cursorPosition = position;
+       
        this.cursorVelocity.scale(1/3
        ).add(this.cursorPositionDelta.clone(
        ).scale(1000/timediff
