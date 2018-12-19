@@ -212,7 +212,7 @@ var physics = (function(){
         this.drawPoint(entity.position, "white");
     }
     Scene.prototype.drawConstraint = function(constraint, canvas=this.canvas){
-        if (constraint instanceof Rope || constraint instanceof StiffRope){
+        if (constraint instanceof Rope || constraint instanceof ElasticRope){
             this.ctx.beginPath();
            
            var p1 = constraint.bodyA.position.clone(
@@ -392,7 +392,7 @@ var physics = (function(){
     }
     RigidBody.prototype.update = function(time){
         var t = time / 1000;
-        this.moving = false
+        this.moving = false;
         
         if (this.velocity.x || this.velocity.y){
             this.moving = true;
@@ -534,13 +534,20 @@ var physics = (function(){
         ).subtract(this.bodyB.getVelocityInPoint(pointB));
         if (relativeV.dot(this.normal)>0) return;
         
-        var totalMass = this.bodyA.getInvMassInPoint(pointA, this.normal) + this.bodyB.getInvMassInPoint(pointB, this.normal);
-        var j = (this.offset.length()/10 + -1.2*relativeV.dot(this.normal))/totalMass
+        var invMssA = this.bodyA.getInvMassInPoint(pointA, this.normal);
+        var invMssB = this.bodyB.getInvMassInPoint(pointB, this.normal);
+        var totalMass = invMssA + invMssB;
+        if (!totalMass) return;
+        var j = -1.2*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
     
         this.bodyA.applyImpulse(pointA, impulse);
         this.bodyB.applyImpulse(pointB, impulse.reverse());
+        
+        // offsetfix
+        this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
+        this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
     }
     
     var ElasticRope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
@@ -586,6 +593,7 @@ var physics = (function(){
         if (relativeV.dot(this.normal)>0) return;
         
         var totalMass = this.bodyA.getInvMassInPoint(this.point, this.normal) + this.bodyB.getInvMassInPoint(this.point, this.normal);
+        if (!totalMass) return;
         var e = (this.bodyA.material.restitution + this.bodyB.material.restitution)/2;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
@@ -961,10 +969,10 @@ var physics = (function(){
        this.cursorPosition = position;
        
        var timediff = event.timeStamp-this.timestamp;
+       if(!timediff) return;
        this.timestamp = event.timeStamp;
        
        if(!this.timestamp || timediff>=1000){
-           console.log("reset");
            this.cursorVelocity.set(0,0);
            return;
        }

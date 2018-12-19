@@ -1,4 +1,5 @@
 var ins;
+var g;
 function setup()
 {
     ins = new physics.Scene()
@@ -87,7 +88,7 @@ function setup()
     this.constraint = new physics.StiffRope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),200);
     ins.add(this.constraint);
     */
-    var g = new Grabber();
+    g = new Grabber();
     tracker.addListener("move", function(d){g.move(d)});
     tracker.addListener("m1", function(d){g.grabAndDrop(d)});
     
@@ -98,7 +99,7 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     
-    this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000,200);
+    this.constraint = new physics.Joint(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){
