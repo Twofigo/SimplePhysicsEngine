@@ -656,13 +656,10 @@ var physics = (function(){
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
         if(!(bodyA.moving || bodyB.moving)) return false;
-        var collision = this.bodyBody(bodyA,bodyB);
+        var collision = this.polyPoly(bodyA,bodyB);
         if (collision){
             collision.resolve();
         }
-    }
-    CollisionTests.prototype.bodyBody = function(bodyA, bodyB){
-        return this.polyPoly(bodyA,bodyB);
     }
     CollisionTests.prototype.polyPoly = function(bodyA, bodyB){
         var pointA = false;
