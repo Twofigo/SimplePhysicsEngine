@@ -592,7 +592,9 @@ var physics = (function(){
         ).subtract(this.bodyB.getVelocityInPoint(this.point));
         if (relativeV.dot(this.normal)>0) return;
         
-        var totalMass = this.bodyA.getInvMassInPoint(this.point, this.normal) + this.bodyB.getInvMassInPoint(this.point, this.normal);
+        var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal);
+        var invMssB = this.bodyB.getInvMassInPoint(this.point, this.normal);
+        var totalMass = invMssA + invMssB;
         if (!totalMass) return;
         var e = (this.bodyA.material.restitution + this.bodyB.material.restitution)/2;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
@@ -601,7 +603,7 @@ var physics = (function(){
         
         this.bodyA.applyImpulse(this.point, impulse);
         this.bodyB.applyImpulse(this.point, impulse.reverse());
-
+        
         //friction
         
         var tangent = relativeV.project(this.normal.clone().perp()).normalize();
@@ -636,6 +638,19 @@ var physics = (function(){
         
         this.bodyA.applyImpulse(this.point, frictionImpulse);
         this.bodyB.applyImpulse(this.point, frictionImpulse.reverse());
+        
+        // correct position
+        
+        offset = new Vector();
+        if (this.offsetA){
+            offset.add(this.offsetA);
+        }
+        if (this.offsetB){
+            offset.subtract(this.offsetB);
+        }
+        
+        this.bodyA.position.add(offset.clone().scale(invMssA/totalMass));
+        this.bodyB.position.add(offset.clone().scale(-invMssB/totalMass));
     }
     Collision.prototype.correct = function(){
         const percent = 0.2;
