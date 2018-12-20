@@ -133,7 +133,7 @@ var Grabber = function(){
 Grabber.prototype.grabAndDrop = function(data){
     if(data.state)
     {
-        var cordinate = data.position.subtract(ins.position).scale(1/ins.zoom);
+        var cordinate = ins.coordinateConvert(data.position);
         var body = ins.bodyAtPoint(cordinate);
         if(!body) return;
         this.constraint.bodyB = body;
@@ -146,8 +146,11 @@ Grabber.prototype.grabAndDrop = function(data){
     }
 }
 Grabber.prototype.move = function(data){
+    var cordinate = ins.coordinateConvert(data.position);
+    ins.drawPoint(cordinate,"red",2);
+    
     this.obj.velocity = data.velocity.scale(0.5).scale(1/ins.zoom);
-    this.obj.position = data.position.subtract(ins.position).scale(1/ins.zoom);
+    this.obj.position = cordinate;
 }
 
 function mainloop(timestamp){

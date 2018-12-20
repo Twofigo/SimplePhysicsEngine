@@ -126,11 +126,13 @@ var physics = (function(){
     }
     Scene.prototype.draw = function(){
         
-        this.ctx.setTransform(this.zoom,0,0,this.zoom,this.position.x,this.position.y);
+        this.ctx.setTransform(this.zoom,0,0,this.zoom,this.canvas.width*0.5,this.canvas.height*0.5);
+        this.ctx.translate(this.position.x, this.position.y);
         
-        //this.ctx.transform(this.zoomFactor, 0, this.zoomFactor, 0,this.position.x, this.position.y);
         
-        this.ctx.clearRect(-this.position.x*this.zoom, -this.position.y*this.zoom, this.canvas.width*this.zoom, this.canvas.height*this.zoom);
+        this.ctx.clearRect(-this.position.x*this.zoom - this.canvas.width*0.5, 
+        -this.position.y*this.zoom  - this.canvas.width*0.5
+        , this.canvas.width, this.canvas.height);
         for(obj of this.enteties)
         {
             this.drawEntity(obj);
@@ -144,17 +146,46 @@ var physics = (function(){
             this.drawConstraint(obj);
         }
     }
+    Scene.prototype.setZoom = function(zoom){
+        if (zoom){
+            this.zoomFactor = zoom;
+        }
+        
+        if (this.canvas.width < this.canvas.height)
+            this.zoom = this.zoomFactor*this.canvas.width / 1000;
+        else
+            this.zoom = this.zoomFactor*this.canvas.height / 1000;
+        
+    }
+    Scene.prototype.setPosition = function(position){
+        if (position){
+            this.position = position.clone()
+        }
+    }
+    Scene.prototype.zoom = function(change)
+    {
+        this.setZoom(this.zoomFactor+change);
+    }
+    Scene.prototype.move = function(vector)
+    {
+        this.setPosition(this.position.add(vector));
+    }
+    Scene.prototype.move = function(x, y)
+    {
+        this.setPosition(this.position.add({x:x, y:y}));
+    }
+    Scene.prototype.coordinateConvert = function(coordinate)
+    {
+        return coordinate.clone().subtract({x:this.canvas.width*0.5, y:this.canvas.height*0.5}
+        ).scale(1/this.zoom
+        ).subtract(this.position);
+    }
     Scene.prototype.setSize = function(){
         var boxInfo = this.canvas.getBoundingClientRect();
         this.canvas.width	= boxInfo.width;
         this.canvas.height	= boxInfo.height;
         
-        this.position.set(this.canvas.width/2, this.canvas.height/2);
-        
-        if (boxInfo.width < boxInfo.height)
-            this.zoom = this.zoomFactor*boxInfo.width /1000;
-        else
-            this.zoom = this.zoomFactor*boxInfo.height / 1000;
+        this.setZoom();
         
         this.draw();
     }
@@ -235,7 +266,7 @@ var physics = (function(){
     }
     Scene.prototype.drawPoint = function(position, color="black", size=1){
         this.ctx.beginPath();
-        this.ctx.fillStyle="#FFFFFF";
+        this.ctx.fillStyle=color;
         this.ctx.fillRect(position.x-size, position.y-size, 2*size*this.zoom, 2*size*this.zoom);
         this.ctx.fill();
     }
