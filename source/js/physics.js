@@ -126,7 +126,11 @@ var physics = (function(){
     }
     Scene.prototype.draw = function(){
         
-        this.ctx.clearRect(-this.canvas.width/2, -this.canvas.height/2, this.canvas.width, this.canvas.height);
+        this.ctx.setTransform(this.zoom,0,0,this.zoom,this.position.x,this.position.y);
+        
+        //this.ctx.transform(this.zoomFactor, 0, this.zoomFactor, 0,this.position.x, this.position.y);
+        
+        this.ctx.clearRect(-this.position.x*this.zoom, -this.position.y*this.zoom, this.canvas.width*this.zoom, this.canvas.height*this.zoom);
         for(obj of this.enteties)
         {
             this.drawEntity(obj);
@@ -145,10 +149,7 @@ var physics = (function(){
         this.canvas.width	= boxInfo.width;
         this.canvas.height	= boxInfo.height;
         
-        this.ctx.restore();
         this.position.set(this.canvas.width/2, this.canvas.height/2);
-        this.ctx.translate(this.position.x, this.position.y);
-        this.ctx.save();
         
         if (boxInfo.width < boxInfo.height)
             this.zoom = this.zoomFactor*boxInfo.width /1000;
@@ -203,8 +204,9 @@ var physics = (function(){
         if (entity.geometry instanceof Polygon){
             this.ctx.beginPath();
             for(var vertex of entity.geometry.iterateVertices()){
-                vertex.rotate(entity.angle).add(entity.position);
-                this.ctx.lineTo(vertex.x * this.zoom, vertex.y * this.zoom)
+                vertex.rotate(entity.angle
+                ).add(entity.position);
+                this.ctx.lineTo(vertex.x, vertex.y)
             }
             this.ctx.fillStyle = entity.texture.surfaceColor;
             this.ctx.fill();
@@ -215,15 +217,16 @@ var physics = (function(){
         if (constraint instanceof Rope || constraint instanceof ElasticRope){
             this.ctx.beginPath();
            
-           var p1 = constraint.bodyA.position.clone(
+            var p1 = constraint.bodyA.position.clone(
             ).add(constraint.positionA.clone(
-            ).rotate(constraint.bodyA.angle))
+            ).rotate(constraint.bodyA.angle));
+            
             var p2 = constraint.bodyB.position.clone(
             ).add(constraint.positionB.clone(
-            ).rotate(constraint.bodyB.angle))
+            ).rotate(constraint.bodyB.angle));
             
-            this.ctx.moveTo(p1.x * this.zoom, p1.y * this.zoom)
-            this.ctx.lineTo(p2.x * this.zoom, p2.y * this.zoom)
+            this.ctx.moveTo(p1.x, p1.y)
+            this.ctx.lineTo(p2.x, p2.y)
             
             this.ctx.strokeStyle = "yellow";
             this.ctx.strokeWidth = 20;
@@ -233,7 +236,7 @@ var physics = (function(){
     Scene.prototype.drawPoint = function(position, color="black", size=1){
         this.ctx.beginPath();
         this.ctx.fillStyle="#FFFFFF";
-        this.ctx.fillRect((position.x-size)*this.zoom, (position.y-size)*this.zoom, 2*size*this.zoom, 2*size*this.zoom);
+        this.ctx.fillRect(position.x-size, position.y-size, 2*size*this.zoom, 2*size*this.zoom);
         this.ctx.fill();
     }
     Scene.prototype.bodyAtPoint = function(coordinate){
