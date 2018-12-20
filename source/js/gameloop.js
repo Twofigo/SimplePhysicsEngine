@@ -147,7 +147,6 @@ Grabber.prototype.grabAndDrop = function(data){
 }
 Grabber.prototype.move = function(data){
     var cordinate = ins.coordinateConvert(data.position);
-    ins.drawPoint(cordinate,"red",2);
     
     this.obj.velocity = data.velocity.scale(0.5).scale(1/ins.zoom);
     this.obj.position = cordinate;

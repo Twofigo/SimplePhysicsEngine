@@ -130,9 +130,9 @@ var physics = (function(){
         this.ctx.translate(this.position.x, this.position.y);
         
         
-        this.ctx.clearRect(-this.position.x*this.zoom - this.canvas.width*0.5, 
-        -this.position.y*this.zoom  - this.canvas.width*0.5
-        , this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(this.position.x - this.canvas.width*0.5/this.zoom, 
+        this.position.y  - this.canvas.height*0.5/this.zoom
+        , this.canvas.width/this.zoom, this.canvas.height/this.zoom);
         for(obj of this.enteties)
         {
             this.drawEntity(obj);
