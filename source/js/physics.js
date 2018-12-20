@@ -394,13 +394,13 @@ var physics = (function(){
         var t = time / 1000;
         this.moving = false;
         
-        if (this.velocity.x || this.velocity.y){
+        if (this.velocity.squareLength()>50){
             this.moving = true;
             this.position.add(this.velocity.clone().scale(t));
         }
         
         var accelleration = this.force.scale(this.inv_mass);
-        if (accelleration.x || accelleration.y){
+        if (accelleration.squareLength()>50){
             moving = true;
             this.position.add(accelleration.clone().scale(t * t * 0.5));
             this.velocity.add(accelleration.scale(t));
@@ -652,18 +652,6 @@ var physics = (function(){
         this.bodyA.position.add(offset.clone().scale(invMssA/totalMass));
         this.bodyB.position.add(offset.clone().scale(-invMssB/totalMass));
     }
-    Collision.prototype.correct = function(){
-        const percent = 0.2;
-        
-        if (this.offsetA)
-        {
-            this.bodyA.position.add(this.offsetA.scale(percent));
-        }
-        if (this.offsetB)
-        {
-            this.bodyB.position.add(this.offsetB.scale(percent));
-        }
-    }
     
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
@@ -671,7 +659,6 @@ var physics = (function(){
         var collision = this.bodyBody(bodyA,bodyB);
         if (collision){
             collision.resolve();
-            collision.correct();
         }
     }
     CollisionTests.prototype.bodyBody = function(bodyA, bodyB){
