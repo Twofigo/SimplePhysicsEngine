@@ -108,12 +108,14 @@ function setup()
     
 
     
-    /*
+    this.constraint = new physics.Rope(ins.rigidBodies[2], new physics.Vector(), ins.rigidBodies[3], new physics.Vector(),100);
+    ins.add(this.constraint);
+    
     var obj = new physics.RigidBody();
     obj.setPosition(0,100);
-    this.constraint = new physics.StiffRope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),200);
+    this.constraint = new physics.Rope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),100);
     ins.add(this.constraint);
-    */
+    
     g = new Grabber();
     tracker.addListener("move", function(d){g.move(d)});
     tracker.addListener("m1", function(d){g.grabAndDrop(d)});
