@@ -797,6 +797,30 @@ var physics = (function(){
         
         return collision;
     }
+    CollisionTests.prototype.PolyProjectToNormal = function(geometry, position, angle, normal, center){
+        
+        var OffsetList = [];
+        
+        var c = position.clone(
+        ).subtract(center
+        ).project(normal)
+        
+        for(var vertex of geometry.iterateVertices())
+        {
+            vertex.rotate(angle
+            ).add(position
+            ).subtract(center)
+            
+            var x = vertex.dot(normal);
+            var y = vertex.dot(normal.clone().perp());
+            
+            OffsetList.push(new Vector(x, y));
+        }
+        
+        OffsetList.sort(function(a,b){return a.x - b.x});
+        
+        return OffsetList;
+    }
     CollisionTests.prototype.pointInPoly = function(body, coordinate){
         var lineA = new Line();
         lineA.pointA = coordinate.clone();
