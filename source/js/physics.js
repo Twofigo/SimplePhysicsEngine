@@ -150,10 +150,10 @@ var physics = (function(){
         this.ctx.setTransform(this.zoom,0,0,this.zoom,this.canvas.width*0.5,this.canvas.height*0.5);
         this.ctx.translate(this.position.x, this.position.y);
         
-        
         this.ctx.clearRect(this.position.x - this.canvas.width*0.5/this.zoom, 
-        this.position.y  - this.canvas.height*0.5/this.zoom
-        , this.canvas.width/this.zoom, this.canvas.height/this.zoom);
+        this.position.y  - this.canvas.height*0.5/this.zoom, 
+        this.canvas.width/this.zoom, this.canvas.height/this.zoom);
+        
         for(obj of this.enteties)
         {
             this.drawEntity(obj);
@@ -697,8 +697,8 @@ var physics = (function(){
         
         this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
         this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
-        }
-        
+    }
+    
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
         if(!(bodyA.moving || bodyB.moving)) return false;
@@ -711,6 +711,7 @@ var physics = (function(){
         var pointA = false;
         var pointB = false;
         
+        // test collision
         main:
         for(var lineA of bodyA.geometry.iterateEdges()){
             lineA.rotate(bodyA.angle).add(bodyA.position);
@@ -732,6 +733,8 @@ var physics = (function(){
         collision.bodyA = bodyA;
         collision.bodyB = bodyB;
         
+        
+        // compile normal
         collision.normal = pointB.clone(
         ).subtract(pointA
         ).normalize(
@@ -745,76 +748,59 @@ var physics = (function(){
             collision.normal.reverse();
         }
         
-        var totalOffset = 0;
-        var offsetA = false;
-        var offsetB = false;
-        collision.point = new Vector();
-        for (var obj = collision.bodyA;; obj= collision.bodyB)
-        {
-            var maxOffset = false;
-            var center = obj.position.clone(
-            ).subtract(pointA
-            ).project(collision.normal)
-            
-            for(var vertex of obj.geometry.iterateVertices())
-            {
-                vertex.rotate(obj.angle
-                ).add(obj.position);
-                var v = vertex.clone(
-                ).subtract(pointA
-                ).project(collision.normal);
-                
-                if (v.dot(center)>=0)continue;
-                
-                var offset = v.length()
-                collision.point.add(vertex.scale(offset));
-                totalOffset += offset;
-                if (!maxOffset || maxOffset.squareLength() < v.squareLength())
-                {
-                    maxOffset = v;
-                }
-            }
-            if (obj===collision.bodyA) {
-                if (maxOffset) offsetA = maxOffset.reverse();
-            }
-            else
-            {
-                if (maxOffset) offsetB = maxOffset.reverse();
-                break;
-            }
-        }
+        // run SAT
+        var vert1 = this.PolyProjectToNormal(
+        collision.bodyA.geometry, 
+        collision.bodyA.position, 
+        collision.bodyA.angle, 
+        collision.normal, 
+        pointA);
+        var vert2 = this.PolyProjectToNormal(
+        collision.bodyB.geometry, 
+        collision.bodyB.position, 
+        collision.bodyB.angle, 
+        collision.normal, 
+        pointA);
+        
+        // compute offset
         collision.offset = new Vector();
-        if (offsetA){
-            collision.offset.add(offsetA);
+        if (vert1[0].x<0){
+            collision.offset.subtract(collision.normal.clone().scale(vert1[0].x));
         }
-        if (offsetB){
-            collision.offset.subtract(offsetB);
+        if (vert2[vert2.length-1].x>0){
+            collision.offset.add(collision.normal.clone().scale(vert2[vert2.length-1].x));
         }
         
-        console.log(collision.point);
-        //console.log(collision.offset);
+        // compute collisionPoint
+        collision.point = new Vector();
+        var totalOffset = 0;
+        for (var k=0;vert1[k].x<0;k++){
+            totalOffset-=vert1[k].x
+            collision.point.add(vert1[k].clone().scale(-vert1[k].x));
+        }
+        for (var k=vert2.length-1;vert2[k].x>0;k--){
+            totalOffset+=vert2[k].x
+            collision.point.add(vert2[k].clone().scale(vert2[k].x));
+        }
         collision.point.scale(1/totalOffset);
+        
+        collision.point.translateRev(collision.normal);
+        collision.point.add(pointA);
         
         return collision;
     }
     CollisionTests.prototype.PolyProjectToNormal = function(geometry, position, angle, normal, center){
         
         var OffsetList = [];
-        
-        var c = position.clone(
-        ).subtract(center
-        ).project(normal)
-        
-        for(var vertex of geometry.iterateVertices())
-        {
+       
+        for(var vertex of geometry.iterateVertices()){
             vertex.rotate(angle
             ).add(position
             ).subtract(center)
             
-            var x = vertex.dot(normal);
-            var y = vertex.dot(normal.clone().perp());
+            vertex.translate(normal)
             
-            OffsetList.push(new Vector(x, y));
+            OffsetList.push(vertex);
         }
         
         OffsetList.sort(function(a,b){return a.x - b.x});
@@ -1097,6 +1083,7 @@ var physics = (function(){
     default_material.restitution		= 0.2;
         
     return {
+        Vector: Vector,
         InputTracker: InputTracker,
         Scene: Scene,
         Vector: Vector,
