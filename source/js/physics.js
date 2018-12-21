@@ -638,8 +638,7 @@ var physics = (function(){
         this.bodyB				= false;
         this.normal				= false;
         this.point				= false;
-        this.offsetA			= false;
-        this.offsetB			= false;
+        this.offset			    = false;
     }
     Collision.prototype.resolve = function(){	
         
@@ -696,18 +695,10 @@ var physics = (function(){
         
         // correct position
         
-        offset = new Vector();
-        if (this.offsetA){
-            offset.add(this.offsetA);
-        }
-        if (this.offsetB){
-            offset.subtract(this.offsetB);
+        this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
+        this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
         }
         
-        this.bodyA.position.add(offset.clone().scale(invMssA/totalMass));
-        this.bodyB.position.add(offset.clone().scale(-invMssB/totalMass));
-    }
-    
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
         if(!(bodyA.moving || bodyB.moving)) return false;
@@ -721,11 +712,9 @@ var physics = (function(){
         var pointB = false;
         
         main:
-        for(var lineA of bodyA.geometry.iterateEdges())
-        {
+        for(var lineA of bodyA.geometry.iterateEdges()){
             lineA.rotate(bodyA.angle).add(bodyA.position);
-            for(var lineB of bodyB.geometry.iterateEdges())
-            {
+            for(var lineB of bodyB.geometry.iterateEdges()){
                 lineB.rotate(bodyB.angle).add(bodyB.position);
                 var coordinate = lineA.intersect(lineB);
                 if (!coordinate) continue; 
@@ -757,6 +746,8 @@ var physics = (function(){
         }
         
         var totalOffset = 0;
+        var offsetA = false;
+        var offsetB = false;
         collision.point = new Vector();
         for (var obj = collision.bodyA;; obj= collision.bodyB)
         {
@@ -784,14 +775,24 @@ var physics = (function(){
                 }
             }
             if (obj===collision.bodyA) {
-                if (maxOffset) collision.offsetA = maxOffset.reverse();
+                if (maxOffset) offsetA = maxOffset.reverse();
             }
             else
             {
-                if (maxOffset) collision.offsetB = maxOffset.reverse();
+                if (maxOffset) offsetB = maxOffset.reverse();
                 break;
             }
         }
+        collision.offset = new Vector();
+        if (offsetA){
+            collision.offset.add(offsetA);
+        }
+        if (offsetB){
+            collision.offset.subtract(offsetB);
+        }
+        
+        console.log(collision.point);
+        //console.log(collision.offset);
         collision.point.scale(1/totalOffset);
         
         return collision;
