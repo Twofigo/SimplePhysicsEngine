@@ -183,20 +183,16 @@ var physics = (function(){
             this.position = position.clone()
         }
     }
-    Scene.prototype.zoom = function(change)
-    {
+    Scene.prototype.zoom = function(change){
         this.setZoom(this.zoomFactor+change);
     }
-    Scene.prototype.move = function(vector)
-    {
+    Scene.prototype.move = function(vector){
         this.setPosition(this.position.add(vector));
     }
-    Scene.prototype.move = function(x, y)
-    {
+    Scene.prototype.move = function(x, y){
         this.setPosition(this.position.add({x:x, y:y}));
     }
-    Scene.prototype.coordinateConvert = function(coordinate)
-    {
+    Scene.prototype.coordinateConvert = function(coordinate){
         return coordinate.clone().subtract({x:this.canvas.width*0.5, y:this.canvas.height*0.5}
         ).scale(1/this.zoom
         ).subtract(this.position);
@@ -355,6 +351,19 @@ var physics = (function(){
         return false; // No collision
     }
     
+    var geometry = function(){
+        var geometry = function(, texture=default_texture){
+        this.components = [];
+        this.componentPositions = [];
+        
+        this.texture = texture;
+    }
+    geometry.prototype.iterateComponents(){
+        for(var comp of this.components){
+            yield comp;
+        }
+    }
+    
     var Polygon = function(vertices = []){
         this.vertices	= vertices;
     }
@@ -406,12 +415,11 @@ var physics = (function(){
        }
     }
     
-    var Entity = function(geometry = false, texture = default_texture){
+    var Entity = function(geometry = false){
         this.position   = new Vector();
         this.angle      = 0;
         
         this.geometry   = geometry;
-        this.texture   = texture;
     }
     Entity.prototype.setPosition = function(x = 0, y = 0, angle = 0){
         this.position.x = x;
@@ -419,16 +427,15 @@ var physics = (function(){
         this.angle      = angle;
     }
     
-    var RigidBody = function(geometry = false, texture = default_texture, material = default_material){    
+    var RigidBody = function(geometry = false, material = default_material){    
         Entity.call(this, geometry, texture);
-    
-        this.material = material;
-    
+        
         this.velocity			= new Vector();
         this.angularVelocity	= 0;
         this.force				= new Vector();
         this.torque				= 0;
         
+        this.material = material;
         this.inertia			= 0;
         this.mass				= 0;
         this.inv_mass           = 0;
@@ -519,10 +526,8 @@ var physics = (function(){
         this.torque += torque;
     }
     RigidBody.prototype.compile = function() {
-        var data;
-        if (this.geometry instanceof Polygon) {
-            data = compilePolygon(this.geometry, this.material);
-        }
+        var data = compileGeometry(this.geometry, this.material);
+        
         this.mass = data.mass;
         this.inertia = data.inertia;
         this.inv_mass = 1/data.mass;
@@ -743,8 +748,7 @@ var physics = (function(){
         if (collision.bodyA.position.clone(
         ).subtract(pointA
         ).dot(collision.normal
-        )<0)
-        {
+        )<0){
             collision.normal.reverse();
         }
         
@@ -821,7 +825,30 @@ var physics = (function(){
     }
     var collisionTests = new CollisionTests();    
     
-    function compilePolygon(geometry, material){
+    var compiler = function(){}
+    compiler.prototype.compileGeometryAttributes = function(geometry, material){
+        var data = {
+        "mass":0,
+        "inertia":0,
+        "surfaceArea":0,
+        "originOffset": new Vector()
+        };
+        
+        var d
+        for(var comp in geometry.iterateComponents()){
+            d = false
+            if (comp instanceof Polygon){
+                d = compilePolygonAttributes(comp, material); 
+            }
+            
+            data.surfaceArea+=d.surfaceArea;
+            data.mass+=d.mass;
+            
+        }
+        
+        return data;
+    }
+    compiler.prototype.compilePolygonAttributes = function(polygon, material){
         var data = {
         "mass":0,
         "inertia":0,
@@ -834,7 +861,7 @@ var physics = (function(){
         {
             // relative coordinate !!!
             
-            var v = line.pointB.clone(
+            var v = line.polygon.clone(
             ).subtract(line.pointA);
             
             var b = v.length();
@@ -1083,7 +1110,6 @@ var physics = (function(){
     default_material.restitution		= 0.2;
         
     return {
-        Vector: Vector,
         InputTracker: InputTracker,
         Scene: Scene,
         Vector: Vector,

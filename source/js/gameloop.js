@@ -1,5 +1,4 @@
-var ins;
-var g;
+var ins;;
 function setup()
 {
     ins = new physics.Scene()
