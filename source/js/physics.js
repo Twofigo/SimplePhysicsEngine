@@ -67,6 +67,27 @@ var physics = (function(){
         
         return this;
     }
+    Vector.prototype.translate = function(normal){
+        var x = this.dot(normal);
+        var y = this.dot(normal.clone().perp());
+        this.x = x;
+        this.y = y;
+        
+        return this;
+    }
+    Vector.prototype.translateRev = function(normal){
+        var v = normal.clone(
+        ).scale(this.x
+        ).add(normal.clone(
+        ).perp(
+        ).scale(this.y)
+        );
+        
+        this.x = v.x;
+        this.y = v.y;
+        
+        return this;
+    }
     Vector.prototype.squareLength = function(){
         return this.dot(this);
     }
