@@ -156,11 +156,11 @@ var physics = (function(){
         
         for(obj of this.enteties)
         {
-            this.drawEntity(obj);
+            this.drawGeometry(obj.geometry, obj.position, obj.angle);
         }
         for(obj of this.rigidBodies)
         {
-            this.drawEntity(obj);
+            this.drawGeometry(obj.geometry, obj.position, obj.angle);
         }
         for(obj of this.constraints)
         {
@@ -248,20 +248,26 @@ var physics = (function(){
             this.constraints.push(obj)
         }
     }
-    Scene.prototype.drawEntity = function(entity, canvas=this.canvas){
-        if (entity.geometry instanceof Polygon){
-            this.ctx.beginPath();
-            for(var vertex of entity.geometry.iterateVertices()){
-                vertex.rotate(entity.angle
-                ).add(entity.position);
-                this.ctx.lineTo(vertex.x, vertex.y)
+    Scene.prototype.drawGeometry = function(geometry, position, angle){
+        for (var component in geometry.iterateComponents())
+        {
+            if (component instanceof Polygon){
+                this.drawPolygon(component, position, angle, geometry.texture)
             }
-            this.ctx.fillStyle = entity.texture.surfaceColor;
-            this.ctx.fill();
         }
-        this.drawPoint(entity.position, "white");
+        this.drawPoint(position, "white");
     }
-    Scene.prototype.drawConstraint = function(constraint, canvas=this.canvas){
+    Scene.prototype.drawPolygon = function(polygon, position, angle, texture){
+        this.ctx.beginPath();
+        for(var vertex of component.iterateVertices()){
+            vertex.rotate(angle
+            ).add(position);
+            this.ctx.lineTo(vertex.x, vertex.y)
+        }
+        this.ctx.fillStyle = geometry.texture.surfaceColor;
+        this.ctx.fill();
+    }
+    Scene.prototype.drawConstraint = function(constraint){
         if (constraint instanceof Rope || constraint instanceof ElasticRope){
             this.ctx.beginPath();
            
@@ -351,16 +357,28 @@ var physics = (function(){
         return false; // No collision
     }
     
-    var geometry = function(){
-        var geometry = function(, texture=default_texture){
+    var geometry = function(texture=default_texture){
         this.components = [];
-        this.componentPositions = [];
         
         this.texture = texture;
     }
-    geometry.prototype.iterateComponents(){
+    geometry.prototype.addComponent = function(component, position, angle){
+        component.clone();
+        if(angle) component.rotate(angle);
+        if(position) component.moveOrigin(position);
+        this.component.push(component);
+    }
+    geometry.prototype.setTexture = function(texture){
+        this.texture = texture;
+    }
+    geometry.prototype.iterateComponents = function(){
         for(var comp of this.components){
             yield comp;
+        }
+    }
+    geometry.prototype.moveOrigin = function(offset){
+        for(var comp of this.components){
+            comp.moveOrigin(offset);
         }
     }
     
@@ -412,6 +430,11 @@ var physics = (function(){
     Polygon.prototype.moveOrigin = function(offset){
        for (vertex of this.vertices){
            vertex.add(offset);
+       }
+    }
+    Polygon.prototype.rotate = function(angle){
+       for (vertex of this.vertices){
+           vertex.rotate(angle);
        }
     }
     
@@ -526,7 +549,7 @@ var physics = (function(){
         this.torque += torque;
     }
     RigidBody.prototype.compile = function() {
-        var data = compileGeometry(this.geometry, this.material);
+        var data = compiler.compileGeometryAttributes(this.geometry, this.material);
         
         this.mass = data.mass;
         this.inertia = data.inertia;
@@ -835,16 +858,19 @@ var physics = (function(){
         };
         
         var d
-        for(var comp in geometry.iterateComponents()){
+        for(var component in geometry.iterateComponents()){
             d = false
-            if (comp instanceof Polygon){
+            if (component instanceof Polygon){
                 d = compilePolygonAttributes(comp, material); 
             }
             
             data.surfaceArea+=d.surfaceArea;
             data.mass+=d.mass;
-            
+            data.originOffset.add(d.originOffset.scale(d.mass));
+            data.
         }
+        
+        data.originOffset.scale(1/data.mass);
         
         return data;
     }
@@ -884,8 +910,8 @@ var physics = (function(){
             
             var d = center.length();
             
-            data.mass			+= material.density*surfaceArea;
-            data.inertia		+= material.density*surfaceArea * (d*d) + inertia*material.density;
+            data.mass			+= material.density * surfaceArea;
+            data.inertia		+= material.density * (surfaceArea * (d*d) + inertia);
             data.surfaceArea	+= surfaceArea;
             data.originOffset.add(center);
         }
