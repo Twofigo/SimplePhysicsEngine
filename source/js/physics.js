@@ -291,9 +291,8 @@ var physics = (function(){
         this.ctx.fill();
     }
     Scene.prototype.bodyAtPoint = function(coordinate){
-        for (body of this.rigidBodies)
-        {
-            if (collisionTests.pointInPoly(body, coordinate)) return body;
+        for (body of this.rigidBodies){
+            if (collisionTests.pointInGeometry(body.geometry, body.position, body.angle, coordinate)) return body;
         }
     }
 
@@ -894,6 +893,15 @@ var physics = (function(){
         OffsetList.sort(function(a,b){return a.x - b.x});
         
         return OffsetList;
+    }
+    CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate)
+    {
+        for(var comp of geometry.iterateComponents()){
+            if(comp instanceof Polygon){
+                if(this.pointInPoly(comp, position, angle, coordinate))return true;
+            }
+        }
+        return false;
     }
     CollisionTests.prototype.pointInPoly = function(polygon, position, angle, coordinate){
         var lineA = new Line();
