@@ -154,16 +154,13 @@ var physics = (function(){
         this.position.y  - this.canvas.height*0.5/this.zoom, 
         this.canvas.width/this.zoom, this.canvas.height/this.zoom);
         
-        for(obj of this.enteties)
-        {
+        for(obj of this.enteties){
             this.drawGeometry(obj.geometry, obj.position, obj.angle);
         }
-        for(obj of this.rigidBodies)
-        {
+        for(obj of this.rigidBodies){
             this.drawGeometry(obj.geometry, obj.position, obj.angle);
         }
-        for(obj of this.constraints)
-        {
+        for(obj of this.constraints){
             this.drawConstraint(obj);
         }
     }
@@ -249,7 +246,7 @@ var physics = (function(){
         }
     }
     Scene.prototype.drawGeometry = function(geometry, position, angle){
-        for (var component in geometry.iterateComponents())
+        for (var component of geometry.iterateComponents())
         {
             if (component instanceof Polygon){
                 this.drawPolygon(component, position, angle, geometry.texture)
@@ -259,12 +256,12 @@ var physics = (function(){
     }
     Scene.prototype.drawPolygon = function(polygon, position, angle, texture){
         this.ctx.beginPath();
-        for(var vertex of component.iterateVertices()){
+        for(var vertex of polygon.iterateVertices()){
             vertex.rotate(angle
             ).add(position);
             this.ctx.lineTo(vertex.x, vertex.y)
         }
-        this.ctx.fillStyle = geometry.texture.surfaceColor;
+        this.ctx.fillStyle = texture.surfaceColor;
         this.ctx.fill();
     }
     Scene.prototype.drawConstraint = function(constraint){
@@ -357,26 +354,26 @@ var physics = (function(){
         return false; // No collision
     }
     
-    var geometry = function(texture=default_texture){
+    var Geometry = function(texture=default_texture){
         this.components = [];
         
         this.texture = texture;
     }
-    geometry.prototype.addComponent = function(component, position, angle){
+    Geometry.prototype.addComponent = function(component, position, angle){
         component.clone();
         if(angle) component.rotate(angle);
         if(position) component.moveOrigin(position);
-        this.component.push(component);
+        this.components.push(component);
     }
-    geometry.prototype.setTexture = function(texture){
+    Geometry.prototype.setTexture = function(texture){
         this.texture = texture;
     }
-    geometry.prototype.iterateComponents = function(){
+    Geometry.prototype.iterateComponents = function*(){
         for(var comp of this.components){
             yield comp;
         }
     }
-    geometry.prototype.moveOrigin = function(offset){
+    Geometry.prototype.moveOrigin = function(offset){
         for(var comp of this.components){
             comp.moveOrigin(offset);
         }
@@ -451,7 +448,7 @@ var physics = (function(){
     }
     
     var RigidBody = function(geometry = false, material = default_material){    
-        Entity.call(this, geometry, texture);
+        Entity.call(this, geometry); 
         
         this.velocity			= new Vector();
         this.angularVelocity	= 0;
@@ -556,7 +553,7 @@ var physics = (function(){
         this.inv_mass = 1/data.mass;
         this.inv_inertia = 1/data.inertia;
         this.surfaceArea = data.surfaceArea;
-        this.geometry.moveOrigin(data.originOffset);
+        this.geometry.moveOrigin(data.offset);
     }
     
     var Constraint = function(bodyA, positionA, bodyB, positionB){
@@ -654,6 +651,7 @@ var physics = (function(){
     }
     Rope.prototype = Object.create(ElasticRope.prototype);
     Rope.prototype = Object.create(Joint.prototype);
+
     Rope.prototype.compute = function(){
         ElasticRope.prototype.compute.call(this);
     }
@@ -730,21 +728,87 @@ var physics = (function(){
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
         if(!(bodyA.moving || bodyB.moving)) return false;
-        var collision = this.polyPoly(bodyA,bodyB);
+        var collision = this.BodyBody(bodyA,bodyB);
         if (collision){
             collision.resolve();
         }
     }
-    CollisionTests.prototype.polyPoly = function(bodyA, bodyB){
+    CollisionTests.prototype.BodyBody = function(bodyA, bodyB){
+        var collision = new Collision();
+        collision.bodyA = bodyA;
+        collision.bodyB = bodyB;
+        collision.normal = new Vector();
+        collision.point = new Vector();
+        collision.offset = new Vector();
+        
+        var collisions = [];
+        for(var compA of bodyA.geometry.iterateComponents()){
+            for(var compB of bodyA.geometry.iterateComponents()){
+                if(compA instanceof Polygon){
+                    if(compB instanceof Polygon){
+                        var col = this.polyPoly(compA, bodyA.position, bodyA.angle, compB, bodyB.position, bodyB.angle);
+                        if(col){
+                            collisions.push(col);
+                            collision.normal.add(col.normal);
+                            collision.point.add(col.point);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (collisions.length==0) return false;
+        
+        collision.normal.scale(1/collisions.length);
+        collision.point.scale(1/collisions.length);
+            
+        if (collisions.length>1){
+            
+            // compute offset
+            for(var col of collisions){
+                /*
+                v1 = col.offset;
+                v1 = n1.scale(X);
+                v2 = n2.scale(Y);
+                v3 = n3.scale(Z);
+                offset = v1 + v2;
+                n3_p.dot(v1) = n3_p.dot(v2);
+                
+                n3 = collision.normal.clone();
+                
+                var n3_p = n3.clone().perp();
+                var n1 = col.normal;
+                var n2 = n1.clone.perp();
+                var X = col.offset.length();
+                
+                var Y = X*(n3_p.dot(n1)/n3_p.dot(n2));
+                var offset = col.offset.add(n2.scale(Y))
+                */
+                
+                var perpNormal = collision.normal.clone().perp();
+                var Y = col.offset.length()*(perpNormal.dot(col.normal)/perpNormal.dot(col.normal.clone().perp()));
+                var offset = col.offset.clone().add(col.normal.clone().perp().scale(Y));
+                if (offset.squareLength() > collision.offset.squareLength()){
+                    collision.offset = offset;
+                }
+            }
+        }
+        else{
+            collision.offset = collisions[0].offset;
+        }
+        return collision;
+        
+    }
+    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB){
         var pointA = false;
         var pointB = false;
-        
+        var collision = new Collision();
         // test collision
         main:
-        for(var lineA of bodyA.geometry.iterateEdges()){
-            lineA.rotate(bodyA.angle).add(bodyA.position);
-            for(var lineB of bodyB.geometry.iterateEdges()){
-                lineB.rotate(bodyB.angle).add(bodyB.position);
+        for(var lineA of polygonA.iterateEdges()){
+            lineA.rotate(angleA).add(positionA);
+            for(var lineB of polygonB.iterateEdges()){
+                lineB.rotate(angleB).add(positionB);
                 var coordinate = lineA.intersect(lineB);
                 if (!coordinate) continue; 
                 if (!pointA)pointA = coordinate
@@ -757,10 +821,7 @@ var physics = (function(){
         
         if (!pointA || !pointB) return false;
         
-        var collision = new Collision();
-        collision.bodyA = bodyA;
-        collision.bodyB = bodyB;
-        
+
         
         // compile normal
         collision.normal = pointB.clone(
@@ -768,7 +829,7 @@ var physics = (function(){
         ).normalize(
         ).perp();
          
-        if (collision.bodyA.position.clone(
+        if (positionA.clone(
         ).subtract(pointA
         ).dot(collision.normal
         )<0){
@@ -777,15 +838,15 @@ var physics = (function(){
         
         // run SAT
         var vert1 = this.PolyProjectToNormal(
-        collision.bodyA.geometry, 
-        collision.bodyA.position, 
-        collision.bodyA.angle, 
+        polygonA, 
+        positionA, 
+        angleA, 
         collision.normal, 
         pointA);
         var vert2 = this.PolyProjectToNormal(
-        collision.bodyB.geometry, 
-        collision.bodyB.position, 
-        collision.bodyB.angle, 
+        polygonB, 
+        positionB, 
+        angleB, 
         collision.normal, 
         pointA);
         
@@ -816,11 +877,11 @@ var physics = (function(){
         
         return collision;
     }
-    CollisionTests.prototype.PolyProjectToNormal = function(geometry, position, angle, normal, center){
+    CollisionTests.prototype.PolyProjectToNormal = function(polygon, position, angle, normal, center){
         
         var OffsetList = [];
        
-        for(var vertex of geometry.iterateVertices()){
+        for(var vertex of polygon.iterateVertices()){
             vertex.rotate(angle
             ).add(position
             ).subtract(center)
@@ -834,60 +895,59 @@ var physics = (function(){
         
         return OffsetList;
     }
-    CollisionTests.prototype.pointInPoly = function(body, coordinate){
+    CollisionTests.prototype.pointInPoly = function(polygon, position, angle, coordinate){
         var lineA = new Line();
         lineA.pointA = coordinate.clone();
-        lineA.pointB = body.position.clone();
+        lineA.pointB = position.clone();
         
-        for(var lineB of body.geometry.iterateEdges())
+        for(var lineB of polygon.iterateEdges())
         {
-            lineB.rotate(body.angle).add(body.position);
+            lineB.rotate(angle).add(position);
             if (lineA.intersect(lineB)) return false; 
         }
         return true
     }
     var collisionTests = new CollisionTests();    
     
-    var compiler = function(){}
-    compiler.prototype.compileGeometryAttributes = function(geometry, material){
+    var Compiler = function(){}
+    Compiler.prototype.compileGeometryAttributes = function(geometry, material){
         var dataFull = {
         "mass":0,
         "inertia":0,
         "surfaceArea":0,
-        "originOffset": new Vector()
+        "offset": new Vector()
         };
         
         var d
-        for(var component in geometry.iterateComponents()){
+        for(var comp of geometry.iterateComponents()){
             data = false
-            if (component instanceof Polygon){
-                data = compilePolygonAttributes(comp, material); 
+            if (comp instanceof Polygon){
+                data = this.compilePolygonAttributes(comp, material); 
             }
             
-            var d = data.originOffset.length();
+            var d = data.offset.length();
             
             dataFull.surfaceArea+=data.surfaceArea;
-            dataFull.originOffset.add(data.originOffset.scale(data.mass));
+            dataFull.offset.add(data.offset.scale(data.mass));
             dataFull.inertia+= material.density*(data.inertia + data.surfaceArea*(d*d))
         }
         data.mass = data.surfaceArea*material.density;
-        data.originOffset.scale(1/data.mass);
+        data.offset.scale(1/data.mass);
         
         return data;
     }
-    compiler.prototype.compilePolygonAttributes = function(polygon){
+    Compiler.prototype.compilePolygonAttributes = function(polygon){
         var data = {
         "inertia":0,
         "surfaceArea":0,
         "offset": new Vector()
         };
         
-        var originOffset = new Vector();
-        for( line of geometry.iterateEdges() )
+        for( line of polygon.iterateEdges() )
         {
             // relative coordinate !!!
             
-            var v = line.polygon.clone(
+            var v = line.pointB.clone(
             ).subtract(line.pointA);
             
             var b = v.length();
@@ -916,7 +976,8 @@ var physics = (function(){
         }
         return data;
     }
-    
+    var compiler = new Compiler();    
+     
     // extended -------------------------------------------------------------------------------------------------
     
     var InputTracker = function(){
@@ -1139,6 +1200,7 @@ var physics = (function(){
         Scene: Scene,
         Vector: Vector,
         Material: Material,
+        Geometry: Geometry,
         Polygon: Polygon,
         ElasticJoint: ElasticJoint,
         Joint: Joint,

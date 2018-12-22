@@ -3,8 +3,8 @@ function setup()
 {
     ins = new physics.Scene()
     
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var poly = new physics.Polygon();
+	poly.setVertices([
 	{x:-14,y:20},
 	{x:14,y:20},
 	{x:20,y:0},
@@ -12,64 +12,46 @@ function setup()
 	{x:-14,y:-20},
 	{x:-20,y:0},
 	]);
+    var geo = new physics.Geometry();
+    geo.addComponent(poly);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
 	obj.setPosition(0,0,0);
 	obj.setVelocity(-50,0,8);
     obj.compile();
 	ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(0,100,0);
-	obj.setVelocity(-10,20,0);
-    obj.compile();
-	ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(0,-100,0);
-	obj.setVelocity(0,65,-5);
-    obj.compile();
-	ins.add(obj);
+
 	
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var poly = new physics.Polygon();
+	poly.setVertices([
 	{x:-20,y:-20},
 	{x:-20,y:20},
 	{x:20,y:20},
 	{x:20,y:-20},
 	]);
+    var geo = new physics.Geometry();
+    geo.addComponent(poly);
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
 	obj.setPosition(-200,0,0.5);
 	obj.setVelocity(0,0,0);
 	obj.compile();
     ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(-100,0,0.5);
-	obj.compile();
-    ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(200,0,0.5);
-	obj.compile();
-    ins.add(obj);
+
 	
     // floor;
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var poly = new physics.Polygon();
+	poly.setVertices([
 	{x:-800,y:-100},
 	{x:800,y:-100},
 	{x:800,y:100},
 	{x:-800,y:100},
 	]);
-	
+	var geo = new physics.Geometry();
+    geo.addComponent(poly);
+    
 	var obj = new physics.RigidBody();
-	obj.geometry = geo.clone();
+	obj.geometry = geo;
 	obj.setPosition(0,400);
     ins.add(obj);
 
@@ -80,15 +62,18 @@ function setup()
     ins.add(obj);
 	
 	// left wall
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var poly = new physics.Polygon();
+	poly.setVertices([
 	{x:-100,y:-800},
 	{x:100,y:-800},
 	{x:100,y:800},
 	{x:-100,y:800},
 	]);
-	var obj = new physics.RigidBody();
-	obj.geometry = geo.clone();
+	var geo = new physics.Geometry();
+    geo.addComponent(poly);
+    
+    var obj = new physics.RigidBody();
+	obj.geometry = geo;
 	obj.setPosition(-500,0); 
     ins.add(obj);
 	
@@ -98,22 +83,12 @@ function setup()
 	obj.setPosition(500,0);
     ins.add(obj);
     
-	ins.gravity.y=300;
+	ins.gravity.y=0;
 	ins.setup(document.getElementById("gameboard"));
     
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
-    
-
-    
-    this.constraint = new physics.Rope(ins.rigidBodies[2], new physics.Vector(), ins.rigidBodies[3], new physics.Vector(),100);
-    ins.add(this.constraint);
-    
-    var obj = new physics.RigidBody();
-    obj.setPosition(0,100);
-    this.constraint = new physics.Rope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),100);
-    ins.add(this.constraint);
     
     g = new Grabber();
     tracker.addListener("move", function(d){g.move(d)});
