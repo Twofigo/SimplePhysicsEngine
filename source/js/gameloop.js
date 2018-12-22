@@ -2,27 +2,8 @@ var ins;;
 function setup()
 {
     ins = new physics.Scene()
-    
-	var poly = new physics.Polygon();
-	poly.setVertices([
-	{x:-14,y:20},
-	{x:14,y:20},
-	{x:20,y:0},
-	{x:14,y:-20},
-	{x:-14,y:-20},
-	{x:-20,y:0},
-	]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly);
-	var obj = new physics.RigidBody()
-	obj.geometry = geo;
-	obj.setPosition(0,0,0);
-	obj.setVelocity(-50,0,8);
-    obj.compile();
-	ins.add(obj);
-
-	
-	var poly = new physics.Polygon();
+   
+    var poly = new physics.Polygon();
 	poly.setVertices([
 	{x:-20,y:-20},
 	{x:-20,y:20},
@@ -30,13 +11,14 @@ function setup()
 	{x:20,y:-20},
 	]);
     var geo = new physics.Geometry();
-    geo.addComponent(poly);
+    geo.addComponent(poly, new physics.Vector(-20,-20));
+    geo.addComponent(poly.clone(), new physics.Vector(20,20));
 	var obj = new physics.RigidBody()
 	obj.geometry = geo;
-	obj.setPosition(-200,0,0.5);
-	obj.setVelocity(0,0,0);
-	obj.compile();
-    ins.add(obj);
+	obj.setPosition(0,0,Math.PI/4);
+	obj.setVelocity(-50,0,10);
+    obj.compile();
+	ins.add(obj);
 
 	
     // floor;

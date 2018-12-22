@@ -928,10 +928,10 @@ var physics = (function(){
             var d = data.offset.length();
             
             dataFull.surfaceArea+=data.surfaceArea;
-            dataFull.offset.add(data.offset.scale(data.mass));
+            dataFull.offset.add(data.offset.scale(material.density*data.surfaceArea));
             dataFull.inertia+= material.density*(data.inertia + data.surfaceArea*(d*d))
         }
-        dataFull.mass = data.surfaceArea*material.density;
+        dataFull.mass = dataFull.surfaceArea*material.density;
         dataFull.offset.scale(1/dataFull.mass);
         
         return dataFull;
@@ -943,8 +943,10 @@ var physics = (function(){
         "offset": new Vector()
         };
         
+        var k = 0;
         for( line of polygon.iterateEdges() )
         {
+            k++;
             // relative coordinate !!!
             
             var v = line.pointB.clone(
@@ -972,8 +974,9 @@ var physics = (function(){
             
             data.inertia		+= surfaceArea * (d*d) + inertia;
             data.surfaceArea	+= surfaceArea;
-            data.offset.add(center);
+            data.offset.add(line.pointA);
         }
+        data.offset.scale(1/k).reverse();
         return data;
     }
     var compiler = new Compiler();    
