@@ -850,7 +850,7 @@ var physics = (function(){
     
     var compiler = function(){}
     compiler.prototype.compileGeometryAttributes = function(geometry, material){
-        var data = {
+        var dataFull = {
         "mass":0,
         "inertia":0,
         "surfaceArea":0,
@@ -859,27 +859,27 @@ var physics = (function(){
         
         var d
         for(var component in geometry.iterateComponents()){
-            d = false
+            data = false
             if (component instanceof Polygon){
-                d = compilePolygonAttributes(comp, material); 
+                data = compilePolygonAttributes(comp, material); 
             }
             
-            data.surfaceArea+=d.surfaceArea;
-            data.mass+=d.mass;
-            data.originOffset.add(d.originOffset.scale(d.mass));
-            data.
+            var d = data.originOffset.length();
+            
+            dataFull.surfaceArea+=data.surfaceArea;
+            dataFull.originOffset.add(data.originOffset.scale(data.mass));
+            dataFull.inertia+= material.density*(data.inertia + data.surfaceArea*(d*d))
         }
-        
+        data.mass = data.surfaceArea*material.density;
         data.originOffset.scale(1/data.mass);
         
         return data;
     }
-    compiler.prototype.compilePolygonAttributes = function(polygon, material){
+    compiler.prototype.compilePolygonAttributes = function(polygon){
         var data = {
-        "mass":0,
         "inertia":0,
         "surfaceArea":0,
-        "originOffset": new Vector()
+        "offset": new Vector()
         };
         
         var originOffset = new Vector();
@@ -910,10 +910,9 @@ var physics = (function(){
             
             var d = center.length();
             
-            data.mass			+= material.density * surfaceArea;
-            data.inertia		+= material.density * (surfaceArea * (d*d) + inertia);
+            data.inertia		+= surfaceArea * (d*d) + inertia;
             data.surfaceArea	+= surfaceArea;
-            data.originOffset.add(center);
+            data.offset.add(center);
         }
         return data;
     }
