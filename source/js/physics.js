@@ -743,7 +743,7 @@ var physics = (function(){
         
         var collisions = [];
         for(var compA of bodyA.geometry.iterateComponents()){
-            for(var compB of bodyA.geometry.iterateComponents()){
+            for(var compB of bodyB.geometry.iterateComponents()){
                 if(compA instanceof Polygon){
                     if(compB instanceof Polygon){
                         var col = this.polyPoly(compA, bodyA.position, bodyA.angle, compB, bodyB.position, bodyB.angle);
@@ -931,10 +931,10 @@ var physics = (function(){
             dataFull.offset.add(data.offset.scale(data.mass));
             dataFull.inertia+= material.density*(data.inertia + data.surfaceArea*(d*d))
         }
-        data.mass = data.surfaceArea*material.density;
-        data.offset.scale(1/data.mass);
+        dataFull.mass = data.surfaceArea*material.density;
+        dataFull.offset.scale(1/dataFull.mass);
         
-        return data;
+        return dataFull;
     }
     Compiler.prototype.compilePolygonAttributes = function(polygon){
         var data = {
