@@ -15,9 +15,9 @@ function setup()
     geo.addComponent(poly.clone(), 20, 20);
     var obj = new physics.RigidBody()
     obj.geometry = geo;
+    geo.compile();
     obj.setPosition(0,0,-Math.PI/4);
     obj.setVelocity(0,40,0);
-    obj.compile();
     ins.add(obj);
 
     var geo = new physics.Geometry();
