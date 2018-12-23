@@ -383,7 +383,7 @@ var physics = (function(){
     }
     Geometry.prototype.moveOrigin = function(offset){
         for(var comp of this.components){
-            comp.obj.moveOrigin(offset);
+            comp.position.add(offset);
         }
     }
     Geometry.prototype.compile = function() {
@@ -487,13 +487,13 @@ var physics = (function(){
         var t = time / 1000;
         this.moving = false;
 
-        if (this.velocity.squareLength()>50){
+        if (this.velocity.squareLength()){
             this.moving = true;
             this.position.add(this.velocity.clone().scale(t));
         }
 
         var accelleration = this.force.scale(this.geometry.inv_mass);
-        if (accelleration.squareLength()>50){
+        if (accelleration.squareLength()){
             moving = true;
             this.position.add(accelleration.clone().scale(t * t * 0.5));
             this.velocity.add(accelleration.scale(t));
@@ -513,7 +513,6 @@ var physics = (function(){
 
         if (this.angle > 2*Math.PI) this.angle%=2*Math.PI;
         if (this.angle < 0) this.angle=2*Math.PI + (this.angle%(2*Math.PI));
-
 
         // reset forces
         this.force.scale(0);

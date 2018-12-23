@@ -11,17 +11,18 @@ function setup()
     {x:20,y:-20},
     ]);
     var geo = new physics.Geometry();
-    geo.addComponent(poly.clone(), -20, -20);
+    geo.addComponent(poly.clone(), 0, 0);
     geo.addComponent(poly.clone(), 20, 20);
     var obj = new physics.RigidBody()
     obj.geometry = geo;
     geo.compile();
     obj.setPosition(0,0,-Math.PI/4);
-    obj.setVelocity(0,40,0);
+    obj.setVelocity(30,40,0);
     ins.add(obj);
 
     var geo = new physics.Geometry();
     geo.addComponent(poly.clone());
+    geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
     obj.setPosition(0,100,0);
@@ -71,7 +72,7 @@ function setup()
     obj.setPosition(500,0);
     ins.add(obj);
 
-    ins.gravity.y=0;
+    ins.gravity.y=300;
     ins.setup(document.getElementById("gameboard"));
 
     var tracker = new physics.InputTracker();
