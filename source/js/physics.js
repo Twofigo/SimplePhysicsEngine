@@ -246,10 +246,11 @@ var physics = (function(){
         }
     }
     Scene.prototype.drawGeometry = function(geometry, position, angle){
-        for (var component of geometry.iterateComponents())
+        for (var comp of geometry.iterateComponents())
         {
-            if (component instanceof Polygon){
-                this.drawPolygon(component, position, angle, geometry.texture)
+            if (comp.obj instanceof Polygon){
+                var pos = position.clone().add(comp.position.clone().rotate(angle));
+                this.drawPolygon(comp.obj, pos, comp.angle+angle, geometry.texture)
             }
         }
         this.drawPoint(position, "white");
@@ -359,10 +360,12 @@ var physics = (function(){
         this.texture = texture;
     }
     Geometry.prototype.addComponent = function(component, x=0, y=0, angle=0){
-        component.clone();
-        component.rotate(angle);
-        component.moveOrigin(new Vector(x,y));
-        this.components.push(component);
+        var data = {
+          "obj": component,
+          "position": new Vector(x,y),
+          "angle":angle
+        }
+        this.components.push(data);
     }
     Geometry.prototype.setTexture = function(texture){
         this.texture = texture;
@@ -374,7 +377,7 @@ var physics = (function(){
     }
     Geometry.prototype.moveOrigin = function(offset){
         for(var comp of this.components){
-            comp.moveOrigin(offset);
+            comp.obj.moveOrigin(offset);
         }
     }
 
@@ -742,9 +745,16 @@ var physics = (function(){
         var collisions = [];
         for(var compA of bodyA.geometry.iterateComponents()){
             for(var compB of bodyB.geometry.iterateComponents()){
-                if(compA instanceof Polygon){
-                    if(compB instanceof Polygon){
-                        var col = this.polyPoly(compA, bodyA.position, bodyA.angle, compB, bodyB.position, bodyB.angle);
+                if(compA.obj instanceof Polygon){
+                    if(compB.obj instanceof Polygon){
+                        var col = this.polyPoly(
+                          compA.obj,
+                          bodyA.position.clone().add(compA.position.clone().rotate(bodyA.angle)),
+                          bodyA.angle+compA.angle,
+                          compB.obj,
+                          bodyB.position.clone().add(compB.position.clone().rotate(bodyB.angle)),
+                          bodyB.angle+compB.angle
+                        );
                         if(col){
                             collisions.push(col);
                             collision.normal.add(col.normal);
@@ -927,8 +937,8 @@ var physics = (function(){
         var d
         for(var comp of geometry.iterateComponents()){
             data = false
-            if (comp instanceof Polygon){
-                data = this.compilePolygonAttributes(comp, material);
+            if (comp.obj instanceof Polygon){
+                data = this.compilePolygonAttributes(comp.obj, material);
             }
 
             var d = data.offset.length();
@@ -950,13 +960,8 @@ var physics = (function(){
         };
 
         var k = 0;
-        for (var vertex of polygon.iterateVertices()){
-              k++;
-              data.offset.add(vertex);
-        }
-        data.offset.scale(1/k).reverse();
-        for(var line of polygon.iterateEdges() )
-        {
+        for(var line of polygon.iterateEdges() ){
+          k++;
             // relative coordinate !!!
             var v = line.pointB.clone(
             ).subtract(line.pointA);
@@ -983,7 +988,9 @@ var physics = (function(){
 
             data.inertia		+= surfaceArea * (d*d) + inertia;
             data.surfaceArea	+= surfaceArea;
+            data.offset.add(line.pointA);
         }
+        data.offset.scale(1/k).reverse();
         return data;
     }
     var compiler = new Compiler();
