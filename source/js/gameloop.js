@@ -12,7 +12,7 @@ function setup()
     ]);
     var geo = new physics.Geometry();
     geo.addComponent(poly.clone(), 0, 0);
-    geo.addComponent(poly.clone(), 20, 20);
+    geo.addComponent(poly.clone(), 30, 30);
     geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;

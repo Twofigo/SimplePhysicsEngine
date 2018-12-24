@@ -942,7 +942,7 @@ var physics = (function(){
                 data = this.compilePolygonAttributes(comp.obj, geometry.material);
             }
 
-            var d = data.offset.length();
+            var d = comp.position.length();
 
             dataFull.surfaceArea+=data.surfaceArea;
             dataFull.offset.add(comp.position.clone().add(data.offset).scale(geometry.material.density*data.surfaceArea));
