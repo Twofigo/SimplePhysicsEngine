@@ -962,7 +962,7 @@ var physics = (function(){
 
         var k = 0;
         for(var line of polygon.iterateEdges() ){
-          k++;
+            k++;
             // relative coordinate !!!
             var v = line.pointB.clone(
             ).subtract(line.pointA);
@@ -985,7 +985,7 @@ var physics = (function(){
             center.x = ( line.pointA.x + line.pointB.x ) / 3;
             center.y = ( line.pointA.y + line.pointB.y ) / 3;
 
-            var d = center.subtract(data.offset).length();
+            var d = center.length();
 
             data.inertia		+= surfaceArea * (d*d) + inertia;
             data.surfaceArea	+= surfaceArea;
