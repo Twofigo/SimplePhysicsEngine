@@ -45,8 +45,13 @@ var physics = (function(){
     }
     Vector.prototype.project = function(vector){
         var c = this.dot(vector) / vector.squareLength();
-        this.x = c * vector.x;
-        this.y = c * vector.y;
+        if (isFinite(c)){
+            this.x = c * vector.x;
+            this.y = c * vector.y;
+        }
+        else {
+          this.scale(0);
+        }
 
         return this;
     }
@@ -472,8 +477,6 @@ var physics = (function(){
         this.angularVelocity	= 0;
         this.force				= new Vector();
         this.torque				= 0;
-
-        this.moving             = true;
     }
     RigidBody.prototype = Object.create(Entity.prototype);
     RigidBody.prototype.setVelocity = function(vx = 0, vy = 0, angularVelocity = 0){
@@ -485,28 +488,23 @@ var physics = (function(){
     }
     RigidBody.prototype.update = function(time){
         var t = time / 1000;
-        this.moving = false;
 
-        if (this.velocity.squareLength()){
-            this.moving = true;
+        if (this.velocity.squareLength()>20){
             this.position.add(this.velocity.clone().scale(t));
         }
 
         var accelleration = this.force.scale(this.geometry.inv_mass);
-        if (accelleration.squareLength()){
-            moving = true;
+        if (accelleration.squareLength()>20){
             this.position.add(accelleration.clone().scale(t * t * 0.5));
             this.velocity.add(accelleration.scale(t));
         }
 
         if (this.angularVelocity){
-            this.moving = true;
             this.angle += this.angularVelocity * t;
         }
 
         var angularAccelleration = this.geometry.torque*this.geometry.inv_inertia;
         if (angularAccelleration){
-            this.moving = true;
             this.angle += angularAccelleration * t * t * 0.5;
             this.angularVelocity += angularAccelleration*t;
         }
@@ -519,9 +517,9 @@ var physics = (function(){
         this.torque = 0;
     }
     RigidBody.prototype.applyImpulse = function(coordinate, impulse){
-        if (this.stationary) return;
-
-        this.velocity.add(impulse.clone().scale(this.geometry.inv_mass));
+        if (this.geometry.mass==0) return;
+        var v = impulse.clone().scale(this.geometry.inv_mass)
+        this.velocity.add(v);
 
         var temp = coordinate.clone(
         ).subtract(this.position);
@@ -581,7 +579,6 @@ var physics = (function(){
         ).rotate(this.bodyA.angle))
         );
 
-        console.log(this.offset);
         this.normal = this.offset.clone().normalize();
     }
     ElasticJoint.prototype.resolve = function(){
@@ -665,26 +662,35 @@ var physics = (function(){
         this.offset			    = false;
     }
     Collision.prototype.resolve = function(){
-
+        // relativeV
         var relativeV = this.bodyA.getVelocityInPoint(this.point
         ).subtract(this.bodyB.getVelocityInPoint(this.point));
+
         if (relativeV.dot(this.normal)>0) return;
 
+        // inv_mass
         var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal);
         var invMssB = this.bodyB.getInvMassInPoint(this.point, this.normal);
         var totalMass = invMssA + invMssB;
         if (!totalMass) return;
+
+        // bounce
         var e = (this.bodyA.geometry.material.restitution + this.bodyB.geometry.material.restitution)/2;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
+
+        // correct position
+        this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
+        this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
+        this.point.add(this.offset.clone().scale((invMssA -invMssB)/totalMass));
 
         this.bodyA.applyImpulse(this.point, impulse);
         this.bodyB.applyImpulse(this.point, impulse.reverse());
 
         //friction
 
-        var tangent = relativeV.project(this.normal.clone().perp()).normalize();
+        var tangent = relativeV.clone().project(this.normal.clone().perp()).normalize();
 
         var relativeV = this.bodyA.getVelocityInPoint(this.point
         ).subtract(this.bodyB.getVelocityInPoint(this.point));
@@ -693,21 +699,17 @@ var physics = (function(){
         this.bodyA.geometry.material.staticFriction*this.bodyA.geometry.material.staticFriction +
         this.bodyB.geometry.material.staticFriction*this.bodyB.geometry.material.staticFriction
         );
-
         var frictionImpulse;
-
         var jt = -relativeV.dot(tangent)/totalMass
 
-        if(Math.abs( jt ) < j * mu)
-        {
-            // static friction
+        if(Math.abs( jt ) < j * mu){
+          // static friction
             frictionImpulse = tangent.clone(
             ).scale(jt
             );
         }
-        else
-        {
-            // dunamic friction
+        else{
+          // dynamic friction
             frictionImpulse = tangent.clone().scale(-j * Math.sqrt(
             this.bodyA.geometry.material.dynamicFriction*this.bodyA.geometry.material.dynamicFriction +
             this.bodyB.geometry.material.dynamicFriction*this.bodyB.geometry.material.dynamicFriction
@@ -716,16 +718,10 @@ var physics = (function(){
 
         this.bodyA.applyImpulse(this.point, frictionImpulse);
         this.bodyB.applyImpulse(this.point, frictionImpulse.reverse());
-
-        // correct position
-
-        this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
-        this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
     }
 
     var CollisionTests = function(){};
     CollisionTests.prototype.testCollision = function(bodyA, bodyB){
-        if(!(bodyA.moving || bodyB.moving)) return false;
         var collision = this.BodyBody(bodyA,bodyB);
         if (collision){
             collision.resolve();
@@ -763,8 +759,10 @@ var physics = (function(){
         }
 
         if (collisions.length==0) return false;
-
         collision.normal.scale(1/collisions.length);
+        if (!collision.normal.squareLength()) return false;
+        collision.normal.normalize();
+
         collision.point.scale(1/collisions.length);
 
         if (collisions.length>1){
@@ -801,6 +799,7 @@ var physics = (function(){
         else{
             collision.offset = collisions[0].offset;
         }
+
         return collision;
 
     }
