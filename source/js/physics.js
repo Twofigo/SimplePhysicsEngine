@@ -130,20 +130,24 @@ var physics = (function(){
       	var time = this.getTimeDelta(timestamp);
         if (!time) return;
 
+        for(var obj of this.rigidBodies){
+            obj.update(time);
+        }
+        for(var obj of this.rigidBodies){
+            obj.addForce(this.gravity.clone().scale(obj.geometry.mass));
+        }
         for(var con of this.constraints){
             con.compute();
             con.resolve();
         }
-        for(var obj of this.rigidBodies){
-            obj.addForce(this.gravity.clone().scale(obj.geometry.mass));
-            obj.update(time);
-        }
-
         for (var k1=0; k1<this.rigidBodies.length; k1++){
             var bodyA = this.rigidBodies[k1];
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                 var bodyB = this.rigidBodies[k2];
-                collisionTests.testCollision(bodyA,bodyB);
+                var collision = collisionTests.BodyBody(bodyA,bodyB);
+                if (collision){
+                    collision.resolve();
+                }
             }
         }
 
@@ -721,12 +725,6 @@ var physics = (function(){
     }
 
     var CollisionTests = function(){};
-    CollisionTests.prototype.testCollision = function(bodyA, bodyB){
-        var collision = this.BodyBody(bodyA,bodyB);
-        if (collision){
-            collision.resolve();
-        }
-    }
     CollisionTests.prototype.BodyBody = function(bodyA, bodyB){
         var collision = new Collision();
         collision.bodyA = bodyA;
