@@ -383,7 +383,7 @@ var physics = (function(){
     }
     Geometry.prototype.moveOrigin = function(offset){
         for(var comp of this.components){
-            comp.position.add(offset);
+            comp.position.subtract(offset);
         }
     }
     Geometry.prototype.compile = function() {
@@ -542,8 +542,6 @@ var physics = (function(){
         ).add(radianA.clone().perp().scale(this.angularVelocity).reverse());
     }
     RigidBody.prototype.getInvMassInPoint = function(coordinate, normal){
-        if(this.stationary) return 0;
-
         var rApn = coordinate.clone(
         ).subtract(this.position
         ).cross(normal);
@@ -583,6 +581,7 @@ var physics = (function(){
         ).rotate(this.bodyA.angle))
         );
 
+        console.log(this.offset);
         this.normal = this.offset.clone().normalize();
     }
     ElasticJoint.prototype.resolve = function(){
@@ -608,7 +607,7 @@ var physics = (function(){
         if (this.offset.squareLength() == 0) return
 
         var pointA = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position)
-        var pointB = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position)
+        var pointB = this.positionB.clone().rotate(this.bodyB.angle).add(this.bodyB.position)
 
         var relativeV = this.bodyA.getVelocityInPoint(pointA
         ).subtract(this.bodyB.getVelocityInPoint(pointB));
@@ -903,8 +902,12 @@ var physics = (function(){
     }
     CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate){
         for(var comp of geometry.iterateComponents()){
-            if(comp instanceof Polygon){
-                if(this.pointInPoly(comp, position, angle, coordinate))return true;
+            if(comp.obj instanceof Polygon){
+                if(this.pointInPoly(
+                  comp.obj,
+                  position.clone().add(comp.position.clone().rotate(angle)),
+                  angle+comp.angle,
+                  coordinate))return true;
             }
         }
         return false;
@@ -942,7 +945,7 @@ var physics = (function(){
             var d = data.offset.length();
 
             dataFull.surfaceArea+=data.surfaceArea;
-            dataFull.offset.add(data.offset.scale(geometry.material.density*data.surfaceArea));
+            dataFull.offset.add(comp.position.clone().add(data.offset).scale(geometry.material.density*data.surfaceArea));
             dataFull.inertia+= geometry.material.density*(data.inertia + data.surfaceArea*(d*d))
         }
         dataFull.mass = dataFull.surfaceArea*geometry.material.density;

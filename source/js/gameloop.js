@@ -13,9 +13,9 @@ function setup()
     var geo = new physics.Geometry();
     geo.addComponent(poly.clone(), 0, 0);
     geo.addComponent(poly.clone(), 20, 20);
+    geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
-    geo.compile();
     obj.setPosition(0,0,-Math.PI/4);
     obj.setVelocity(30,40,0);
     ins.add(obj);
@@ -88,7 +88,7 @@ function setup()
 
 var Grabber = function(){
     this.obj = new physics.RigidBody();
-
+    this.obj.geometry = new physics.Geometry();
     this.constraint = new physics.Joint(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000);
     ins.add(this.constraint);
 }
