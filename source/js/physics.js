@@ -134,19 +134,28 @@ var physics = (function(){
             obj.torque = 0;
             obj.addForce(this.gravity.clone().scale(obj.geometry.mass));
         }
-        for(var col of this.collisions){
-            col.resolveForce();
+        var loop = true
+        var k = 0;
+        while(loop)
+        {
+            k++;
+            loop = false;
+            for(var col of this.collisions){
+                if(col.resolveForce())loop=true;
+                //console.log("A:"+JSON.stringify(col.bodyA.force)+" B:"+JSON.stringify(col.bodyB.force));
+            }
         }
+        console.log(k);
         for(var col of this.collisions){
             col.resolveImpulse();
-        }
-        this.collisions = [];
-        for(var obj of this.rigidBodies){
-            obj.update(timestamp);
         }
         for(var con of this.constraints){
             con.compute();
             con.resolve();
+        }
+        this.collisions = [];
+        for(var obj of this.rigidBodies){
+            obj.update(timestamp);
         }
         for (var k1=0; k1<this.rigidBodies.length; k1++){
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
@@ -157,6 +166,7 @@ var physics = (function(){
                 }
             }
         }
+        this.collisions.sort(function(a,b){return a.timestamp - b.timestamp});
         for(var col of this.collisions){
             col.resolvePosition();
         }
@@ -218,28 +228,6 @@ var physics = (function(){
         this.setZoom();
 
         this.draw();
-    }
-    Scene.prototype.getTimeDelta = function(timestamp){
-        if (!timestamp)
-        {
-            this.timestamp = false;
-            return 10;
-        }
-        if (!this.timestamp){
-            this.timestamp = timestamp;
-            return 0;
-        }
-        var time = timestamp - this.timestamp;
-
-        if (time > 100)
-        {
-            this.timestamp = false;
-            return 10;
-        }
-
-        this.timestamp = timestamp;
-
-        return time
     }
     Scene.prototype.compileAll = function(){
         for(obj of this.rigidBodies){
@@ -548,7 +536,7 @@ var physics = (function(){
         }
     }
     RigidBody.prototype.applyImpulse = function(coordinate, impulse){
-        if (this.geometry.mass==0) return;
+        if (!this.geometry.inv_mass) return;
         var v = impulse.clone().scale(this.geometry.inv_mass)
         this.velocity.add(v);
 
@@ -557,18 +545,23 @@ var physics = (function(){
         this.angularVelocity += temp.cross(impulse) * this.geometry.inv_inertia;
     }
     RigidBody.prototype.applyForce = function(coordinate, force){
-        if (this.stationary) return;
-        //linear
-        this.addForce(force);
-        var temp = coordinate.clone(
+        if (!this.geometry.inv_mass) return;
+        var radian = coordinate.clone(
         ).subtract(this.position);
-        this.addTorque(temp.cross(force));
+        this.addForce(force);
+        //this.addTorque(radian.perp().cross(force))
     }
     RigidBody.prototype.getVelocityInPoint = function(coordinate){
-        var radianA = coordinate.clone(
+        var radian = coordinate.clone(
         ).subtract(this.position);
-        return velocityA = this.velocity.clone(
-        ).add(radianA.clone().perp().scale(this.angularVelocity).reverse());
+        return this.velocity.clone(
+        ).add(radian.clone().perp().scale(this.angularVelocity).reverse());
+    }
+    RigidBody.prototype.getForceInPoint = function(coordinate){
+        var radian = coordinate.clone(
+        ).subtract(this.position);
+        return this.force;//.clone(
+        //).add(radian.clone().perp().reverse().normalize().scale(this.torque/radian.length()));
     }
     RigidBody.prototype.getInvMassInPoint = function(coordinate, normal){
         var rApn = coordinate.clone(
@@ -764,7 +757,25 @@ var physics = (function(){
         this.bodyB.applyImpulse(this.point, frictionImpulse.reverse());
     }
     Collision.prototype.resolveForce = function(){
+        //return;
+        var forceA = this.bodyA.getForceInPoint(this.point);
+        var forceB = this.bodyB.getForceInPoint(this.point);
 
+        if (!this.bodyA.geometry.inv_mass){
+            if (!this.bodyB.geometry.inv_mass){
+                return false
+            }
+            forceA = forceB.clone().reverse();
+        }
+        else if (!this.bodyB.geometry.inv_mass){
+            forceB = forceA.clone().reverse();
+        }
+
+        var forceRel = forceA.clone().subtract(forceB).project(this.normal).scale(0.5);
+        if(forceRel.squareLength()<1)return false;
+        this.bodyB.applyForce(this.point, forceRel);
+        this.bodyA.applyForce(this.point, forceRel.reverse());
+        return true;
     }
 
     var CollisionTests = function(){};
