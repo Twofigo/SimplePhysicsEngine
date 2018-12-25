@@ -1204,9 +1204,9 @@ var physics = (function(){
     }
     InputTracker.prototype.calcCursorVelocity = function(event){
 
-       var timediff = event.timestamp-this.timestamp;
+       var timediff = event.timeStamp-this.timestamp;
        if(!timediff) return;
-       this.timestamp = event.timestamp;
+       this.timestamp = event.timeStamp;
 
        if(!this.timestamp || timediff>=1000){
            this.cursorVelocity.set(0,0);
