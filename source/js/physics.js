@@ -508,7 +508,7 @@ var physics = (function(){
         if (this.velocity.squareLength()){
             this.position.add(this.velocity.clone().scale(t));
         }
-        var accelleration = this.force.scale(this.geometry.inv_mass);
+        var accelleration = this.force.clone().scale(this.geometry.inv_mass);
         if (accelleration.squareLength()){
             this.position.add(accelleration.clone().scale(t * t * 0.5));
             this.velocity.add(accelleration.scale(t));
@@ -538,7 +538,7 @@ var physics = (function(){
         if (this.angle > 2*Math.PI) this.angle%=2*Math.PI;
         if (this.angle < 0) this.angle=2*Math.PI + (this.angle%(2*Math.PI));
 
-        var accelleration = this.force.scale(this.geometry.inv_mass);
+        var accelleration = this.force.clone().scale(this.geometry.inv_mass);
         if (accelleration.squareLength()){
             this.velocity.subtract(accelleration.scale(t));
             this.position.subtract(accelleration.clone().scale(time * time * 0.5));
@@ -706,8 +706,20 @@ var physics = (function(){
 
       var time = this.offset.length()/totalV;
       this.timestamp -= time;
-      this.bodyA.reveseUpdate(time);
-      this.bodyB.reveseUpdate(time);
+      this.bodyA.timestamp = this.timestamp;
+      this.bodyB.timestamp = this.timestamp;
+
+      /*
+      var angularAccelleration = this.geometry.torque*this.geometry.inv_inertia;
+      if (angularAccelleration){
+          this.angularVelocity -= angularAccelleration*time;
+      }
+      if (accelleration.squareLength()){
+          this.velocity.subtract(this.force.scale(this.geometry.inv_mass).scale(t));
+      }*/
+
+      this.bodyA.position.add(this.offset.clone().scale(velocityA/totalV));
+      this.bodyB.position.add(this.offset.clone().scale(-velocityB/totalV));
       this.offset = false;
     }
     Collision.prototype.resolveImpulse = function(){
