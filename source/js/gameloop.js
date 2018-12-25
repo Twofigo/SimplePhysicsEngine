@@ -72,7 +72,7 @@ function setup()
     obj.setPosition(500,0);
     ins.add(obj);
 
-    ins.gravity.y=300;
+    ins.gravity.y=0;
     ins.setup(document.getElementById("gameboard"));
 
     var tracker = new physics.InputTracker();

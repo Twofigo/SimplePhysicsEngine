@@ -128,9 +128,6 @@ var physics = (function(){
         this.setSize();
     }
     Scene.prototype.update = function(timestamp = false){
-      	var time = this.getTimeDelta(timestamp);
-        if (!time) return;
-
         // forces
         for(var obj of this.rigidBodies){
             obj.addForce(this.gravity.clone().scale(obj.geometry.mass));
@@ -143,24 +140,24 @@ var physics = (function(){
         }
         this.collisions = [];
         for(var obj of this.rigidBodies){
-            obj.update(time);
-        }
-        for (var k1=0; k1<this.rigidBodies.length; k1++){
-            for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
-                var collision = collisionTests.BodyBody(this.rigidBodies[k1],this.rigidBodies[k2]);
-                if (collision){
-                    this.collisions.push(collision);
-                }
-            }
+            obj.update(timestamp);
         }
         for(var con of this.constraints){
             con.compute();
             con.resolve();
         }
+        for (var k1=0; k1<this.rigidBodies.length; k1++){
+            for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
+                if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass)continue;
+                var collision = collisionTests.BodyBody(this.rigidBodies[k1],this.rigidBodies[k2], timestamp);
+                if (collision){
+                    this.collisions.push(collision);
+                }
+            }
+        }
         for(var col of this.collisions){
             col.resolvePosition();
         }
-        if (this.timestamp !== timestamp) this.update(timestamp);
     }
     Scene.prototype.draw = function(){
 
@@ -489,6 +486,8 @@ var physics = (function(){
         this.angularVelocity	= 0;
         this.force				= new Vector();
         this.torque				= 0;
+
+        this.timestamp    = false;
     }
     RigidBody.prototype = Object.create(Entity.prototype);
     RigidBody.prototype.setVelocity = function(vx = 0, vy = 0, angularVelocity = 0){
@@ -498,8 +497,11 @@ var physics = (function(){
         this.velocity.y		= vy;
         this.angularVelocity= angularVelocity || 0;
     }
-    RigidBody.prototype.update = function(time){
-        var t = time / 1000;
+    RigidBody.prototype.update = function(timestamp){
+        if(!this.timestamp) this.timestamp = timestamp;
+        var t = (timestamp-this.timestamp) / 1000;
+        this.timestamp = timestamp;
+        if (!t) return;
 
         if (this.velocity.squareLength()){
             this.position.add(this.velocity.clone().scale(t));
@@ -671,18 +673,27 @@ var physics = (function(){
         this.bodyB				= false;
         this.normal				= false;
         this.point				= false;
-        this.offset			    = false;
+        this.offset			  = false;
+
+        this.timestamp    = false;
     }
     Collision.prototype.resolvePosition = function(){
-      var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal);
-      var invMssB = this.bodyB.getInvMassInPoint(this.point, this.normal);
-      var totalMass = invMssA + invMssB;
-      if (!totalMass) return;
+      if (!this.offset) return false;
 
+      var velocityA = Math.abs(this.bodyA.getVelocityInPoint(this.point).dot(this.normal));
+      var velocityB = Math.abs(this.bodyB.getVelocityInPoint(this.point).dot(this.normal));
+      var totalV = velocityA+velocityB;
+      if(!totalV)return;
       // correct position
-      this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
-      this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
-      this.point.add(this.offset.clone().scale((invMssA -invMssB)/totalMass));
+      this.bodyA.position.add(this.offset.clone().scale(velocityA/totalV));
+      this.bodyB.position.add(this.offset.clone().scale(-velocityB/totalV));
+
+      this.point.add(this.offset.clone().scale((velocityA -velocityB)/totalV));
+      this.timestamp -= this.offset.length()*totalV;
+      this.bodyA.timestamp = this.timestamp;
+      this.bodyB.timestamp = this.timestamp;
+
+      this.offset = false;
     }
     Collision.prototype.resolveImpulse = function(){
         // relativeV
@@ -739,8 +750,9 @@ var physics = (function(){
     }
 
     var CollisionTests = function(){};
-    CollisionTests.prototype.BodyBody = function(bodyA, bodyB){
+    CollisionTests.prototype.BodyBody = function(bodyA, bodyB, timestamp){
         var collision = new Collision();
+        collision.timestamp = timestamp;
         collision.bodyA = bodyA;
         collision.bodyB = bodyB;
         collision.normal = new Vector();
@@ -815,7 +827,7 @@ var physics = (function(){
         return collision;
 
     }
-    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB){
+    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB, timestamp){
         var pointA = false;
         var pointB = false;
         var collision = new Collision();
@@ -1192,9 +1204,9 @@ var physics = (function(){
     }
     InputTracker.prototype.calcCursorVelocity = function(event){
 
-       var timediff = event.timeStamp-this.timestamp;
+       var timediff = event.timestamp-this.timestamp;
        if(!timediff) return;
-       this.timestamp = event.timeStamp;
+       this.timestamp = event.timestamp;
 
        if(!this.timestamp || timediff>=1000){
            this.cursorVelocity.set(0,0);
