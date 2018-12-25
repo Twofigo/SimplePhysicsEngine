@@ -476,10 +476,13 @@ var physics = (function(){
         this.angularVelocity= angularVelocity || 0;
     }
     RigidBody.prototype.update = function(timestamp){
-        if(!this.timestamp) this.timestamp = timestamp;
+        if(!this.timestamp){
+          this.timestamp = timestamp;
+          return;
+        }
         var time = (timestamp-this.timestamp) / 1000;
         this.timestamp = timestamp;
-        if (!time) return;
+        if (!time || time>50) return;
 
         if (this.velocity.squareLength()){
             this.position.add(this.velocity.clone().scale(time));
