@@ -689,7 +689,7 @@ var physics = (function(){
       this.bodyB.position.add(this.offset.clone().scale(-velocityB/totalV));
 
       this.point.add(this.offset.clone().scale((velocityA -velocityB)/totalV));
-      this.timestamp -= this.offset.length()*totalV;
+      this.timestamp -= this.offset.length()/totalV;
       this.bodyA.timestamp = this.timestamp;
       this.bodyB.timestamp = this.timestamp;
 
