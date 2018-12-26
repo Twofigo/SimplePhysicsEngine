@@ -717,29 +717,28 @@ var physics = (function(){
     Collision.prototype.correct = function(){
       if (!this.offset) return false;
 
-      var velocityA = Math.abs(this.bodyA.getVelocityInPoint(this.point).dot(this.normal));
-      var velocityB = Math.abs(this.bodyB.getVelocityInPoint(this.point).dot(this.normal));
+      var velocityA = Math.abs(this.bodyA.getVelocityInPoint(this.point).dot(this.normal), this.timestamp);
+      var velocityB = Math.abs(this.bodyB.getVelocityInPoint(this.point).dot(this.normal), this.timestamp);
       var totalV = velocityA+velocityB;
       if(!totalV)return;
       // correct position
       this.point.add(this.offset.clone().scale((velocityA -velocityB)/totalV));
-      this.bodyA.position.add(this.offset.clone().scale(velocityA/totalV));
-      this.bodyB.position.add(this.offset.clone().scale(-velocityB/totalV));
+      this.bodyA.addPosition(this.offset.clone().scale(velocityA/totalV), this.timestamp);
+      this.bodyB.addPosition(this.offset.clone().scale(-velocityB/totalV), this.timestamp);
 
-      var time = this.offset.length()/totalV;
-      this.timestamp -= time;
+      this.timestamp-= this.offset.length()/totalV;
 
       this.offset = false;
     }
     Collision.prototype.resolve = function(){
         // relativeV
-        var relativeV = this.bodyA.getVelocityInPoint(this.point
-        ).subtract(this.bodyB.getVelocityInPoint(this.point));
+        var relativeV = this.bodyA.getVelocityInPoint(this.point, this.timestamp
+        ).subtract(this.bodyB.getVelocityInPoint(this.point, this.timestamp));
         if (relativeV.dot(this.normal)>0) return;
 
         // inv_mass
-        var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal);
-        var invMssB = this.bodyB.getInvMassInPoint(this.point, this.normal);
+        var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal, this.timestamp);
+        var invMssB = this.bodyB.getInvMassInPoint(this.point, this.normal, this.timestamp);
         var totalMass = invMssA + invMssB;
         if (!totalMass) return;
 
@@ -749,14 +748,14 @@ var physics = (function(){
         var impulse = this.normal.clone(
         ).scale(j);
 
-        this.bodyA.applyImpulse(this.point, impulse);
-        this.bodyB.applyImpulse(this.point, impulse.reverse());
+        this.bodyA.applyImpulse(this.point, impulse, this.timestamp);
+        this.bodyB.applyImpulse(this.point, impulse.reverse(), this.timestamp);
 
         //friction
         var tangent = relativeV.clone().project(this.normal.clone().perp()).normalize();
 
-        var relativeV = this.bodyA.getVelocityInPoint(this.point
-        ).subtract(this.bodyB.getVelocityInPoint(this.point));
+        var relativeV = this.bodyA.getVelocityInPoint(this.point, this.timestamp
+        ).subtract(this.bodyB.getVelocityInPoint(this.point, this.timestamp));
 
         var mu = Math.sqrt(
         this.bodyA.geometry.material.staticFriction*this.bodyA.geometry.material.staticFriction +
@@ -779,8 +778,8 @@ var physics = (function(){
             ));
         }
 
-        this.bodyA.applyImpulse(this.point, frictionImpulse);
-        this.bodyB.applyImpulse(this.point, frictionImpulse.reverse());
+        this.bodyA.applyImpulse(this.point, frictionImpulse, this.timestamp);
+        this.bodyB.applyImpulse(this.point, frictionImpulse.reverse(), this.timestamp);
     }
 
     var CollisionTests = function(){};
