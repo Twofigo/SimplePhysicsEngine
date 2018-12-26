@@ -781,7 +781,7 @@ var physics = (function(){
         if (!totalMass) return;
 
         var e = (this.bodyA.geometry.material.restitution + this.bodyB.geometry.material.restitution)/2;
-        //if(relativeV.dot(this.normal)<10) e = 0;
+        if(relativeV.dot(this.normal)<10) e = 0;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
