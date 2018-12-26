@@ -93,17 +93,17 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     this.obj.geometry = new physics.Geometry();
-    this.constraint = new physics.Joint(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000);
+    this.constraint = new physics.ElasticJoint(this.obj, new physics.Vector(), this.obj, new physics.Vector(),1000);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){
     if(data.state)
     {
         var cordinate = ins.coordinateConvert(data.position);
-        var body = ins.bodyAtPoint(cordinate, data.timestamp);
+        var body = ins.bodyAtPoint(cordinate, data.timeStamp);
         if(!body) return;
         this.constraint.bodyB = body;
-        this.constraint.positionB = cordinate.subtract(body.getPosition(data.timestamp)).rotate(-body.getAngle(data.timestamp))
+        this.constraint.positionB = cordinate.subtract(body.getPosition(data.timeStamp)).rotate(-body.getAngle(data.timeStamp))
     }
     if(!data.state)
     {
@@ -114,13 +114,13 @@ Grabber.prototype.grabAndDrop = function(data){
 Grabber.prototype.move = function(data){
     var cordinate = ins.coordinateConvert(data.position);
     this.obj.setTimeStamp(data.timeStamp);
-    this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timestamp);
-    this.obj.setPosition(cordinate, data.timestamp);
+    this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timeStamp);
+    this.obj.setPosition(cordinate, data.timeStamp);
 }
 
-function mainloop(timestamp){
-	ins.update(timestamp);
-	ins.draw(timestamp);
+function mainloop(timeStamp){
+	ins.update(timeStamp);
+	ins.draw(timeStamp);
 
 	window.requestAnimationFrame(mainloop);
 }
