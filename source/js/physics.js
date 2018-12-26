@@ -144,8 +144,8 @@ var physics = (function(){
     Scene.prototype.update = function(timestamp = false){
         // forces
         for(var con of this.constraints){
-            con.compute();
-            con.resolve();
+            con.compute(timestamp);
+            con.resolve(timestamp);
         }
         this.collisions = [];
 
@@ -252,16 +252,6 @@ var physics = (function(){
         }
         this.drawPoint(position, "white");
     }
-    Scene.prototype.drawPolygon = function(polygon, position, angle, texture){
-        this.ctx.beginPath();
-        for(var vertex of polygon.iterateVertices()){
-            vertex.rotate(angle
-            ).add(position);
-            this.ctx.lineTo(vertex.x, vertex.y)
-        }
-        this.ctx.fillStyle = texture.surfaceColor;
-        this.ctx.fill();
-    }
     Scene.prototype.drawConstraint = function(constraint, timestamp){
         if (constraint instanceof Rope || constraint instanceof ElasticRope){
             this.ctx.beginPath();
@@ -283,6 +273,16 @@ var physics = (function(){
             this.ctx.strokeWidth = 20;
             this.ctx.stroke();
         }
+    }
+    Scene.prototype.drawPolygon = function(polygon, position, angle, texture){
+        this.ctx.beginPath();
+        for(var vertex of polygon.iterateVertices()){
+            vertex.rotate(angle
+            ).add(position);
+            this.ctx.lineTo(vertex.x, vertex.y)
+        }
+        this.ctx.fillStyle = texture.surfaceColor;
+        this.ctx.fill();
     }
     Scene.prototype.drawPoint = function(position, color="black", size=1){
         this.ctx.beginPath();
@@ -574,6 +574,7 @@ var physics = (function(){
         var angularVelocity = radian.cross(impulse) * this.geometry.inv_inertia;
         this.addAngularVelocity(angularV, timestamp);
     }
+    //RigidBody.prototype.applyForce = function(coordinate, force, timestamp){}
     RigidBody.prototype.getVelocityInPoint = function(coordinate, timestamp){
         var radian = coordinate.clone(
         ).subtract(this.getPosition(timestamp));
@@ -602,8 +603,8 @@ var physics = (function(){
         this.positionA = positionA;
         this.positionB = positionB;
     }
-    Constraint.prototype.compute = function(){}
-    Constraint.prototype.resolve = function(){}
+    Constraint.prototype.compute = function(timestamp){}
+    Constraint.prototype.resolve = function(timestamp){}
 
     var ElasticJoint = function(bodyA, positionA, bodyB, positionB, stiffness=200){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
@@ -613,38 +614,44 @@ var physics = (function(){
         this.offset = false;
     }
     ElasticJoint.prototype = Object.create(Constraint.prototype);
-    ElasticJoint.prototype.compute = function(){
-        this.offset = this.bodyB.position.clone(
+    ElasticJoint.prototype.compute = function(timestamp){
+        this.offset = this.bodyB.getPosition(timestamp
         ).add(this.positionB.clone(
-        ).rotate(this.bodyB.angle)
-        ).subtract(
-        this.bodyA.position.clone(
+        ).rotate(this.bodyB.getAngle(timestamp)
+        )).subtract(
+        this.bodyA.getPosition(timestamp
         ).add(this.positionA.clone(
-        ).rotate(this.bodyA.angle))
-        );
+        ).rotate(this.bodyA.getAngle(timestamp)
+        )));
 
         this.normal = this.offset.clone().normalize();
     }
-    ElasticJoint.prototype.resolve = function(){
+    ElasticJoint.prototype.resolve = function(timestamp){
         if (this.offset.squareLength() == 0) return
 
-        var pointA = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position);
-        var pointB = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position);
+        var pointA = this.positionA.clone(
+        ).rotate(this.bodyA.getAngle(timestamp)
+        ).add(this.bodyA.getPosition(timestamp)
+        );
+        var pointB = this.positionB.clone(
+        ).rotate(this.bodyB.getAngle(timestamp)
+        ).add(this.bodyB.getPosition(timestamp)
+        );
 
         var force = this.offset.clone().scale(this.stiffness);
 
-        this.bodyA.applyForce(pointA, force);
-        this.bodyB.applyForce(pointB, force.reverse());
+        this.bodyA.applyForce(pointA, force, timestamp);
+        this.bodyB.applyForce(pointB, force.reverse(), timestamp);
     }
 
     var Joint = function(bodyA, positionA, bodyB, positionB, stiffness){
         ElasticJoint.call(this, bodyA, positionA, bodyB, positionB, stiffness);
     }
     Joint.prototype = Object.create(ElasticJoint.prototype);
-    Joint.prototype.compute = function(){
+    Joint.prototype.compute = function(timestamp){
         ElasticJoint.prototype.compute.call(this);
     }
-    Joint.prototype.resolve = function(){
+    Joint.prototype.resolve = function(timestamp){
         if (this.offset.squareLength() == 0) return
 
         var pointA = this.positionA.clone().rotate(this.bodyA.angle).add(this.bodyA.position)
@@ -676,13 +683,13 @@ var physics = (function(){
     }
     ElasticRope.prototype = Object.create(Constraint.prototype);
     ElasticRope.prototype = Object.create(ElasticJoint.prototype);
-    ElasticRope.prototype.compute = function(){
+    ElasticRope.prototype.compute = function(timestamp){
         ElasticJoint.prototype.compute.call(this);
 
         if(this.offset.length()<this.ropeLength) this.offset.scale(0);
         else this.offset.subtract(this.normal.clone().scale(this.ropeLength))
     }
-    ElasticRope.prototype.resolve = function(){
+    ElasticRope.prototype.resolve = function(timestamp){
         ElasticJoint.prototype.resolve.call(this);
     }
 
@@ -691,10 +698,10 @@ var physics = (function(){
     }
     Rope.prototype = Object.create(ElasticRope.prototype);
     Rope.prototype = Object.create(Joint.prototype);
-    Rope.prototype.compute = function(){
+    Rope.prototype.compute = function(timestamp){
         ElasticRope.prototype.compute.call(this);
     }
-    Rope.prototype.resolve = function(){
+    Rope.prototype.resolve = function(timestamp){
         Joint.prototype.resolve.call(this);
     }
 
