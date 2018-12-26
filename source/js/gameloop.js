@@ -100,7 +100,7 @@ Grabber.prototype.grabAndDrop = function(data){
     if(data.state)
     {
         var cordinate = ins.coordinateConvert(data.position);
-        var body = ins.bodyAtPoint(cordinate);
+        var body = ins.bodyAtPoint(cordinate, data.timestamp);
         if(!body) return;
         this.constraint.bodyB = body;
         this.constraint.positionB = cordinate.subtract(body.getPosition(data.timestamp)).rotate(-body.getAngle(data.timestamp))

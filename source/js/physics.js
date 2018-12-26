@@ -892,7 +892,7 @@ var physics = (function(){
         return collision;
 
     }
-    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB, timestamp){
+    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB){
         var pointA = false;
         var pointB = false;
         var collision = new Collision();
