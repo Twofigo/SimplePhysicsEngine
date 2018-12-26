@@ -16,7 +16,7 @@ function setup()
     geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
-    obj.setStartPosition(0,0,-Math.PI/4);
+    obj.setStartPosition(0,0,0);
     obj.setStartVelocity(30,40,0);
     ins.add(obj);
 

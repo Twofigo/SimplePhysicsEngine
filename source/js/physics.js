@@ -253,7 +253,7 @@ var physics = (function(){
         var angle = entity.getAngle(timestamp);
         for (var comp of entity.geometry.iterateComponents()){
             if (comp.obj instanceof Polygon){
-                var p = position.add(comp.position.clone(
+                var p = position.clone().add(comp.position.clone(
                 ).rotate(angle)
                 );
                 var a = comp.angle+angle;
@@ -832,10 +832,10 @@ var physics = (function(){
                     if(compB.obj instanceof Polygon){
                         var col = this.polyPoly(
                           compA.obj,
-                          positionA.add(compA.position.clone().rotate(angleA)),
+                          positionA.clone().add(compA.position.clone().rotate(angleA)),
                           angleA+compA.angle,
                           compB.obj,
-                          positionB.add(compB.position.clone().rotate(angleB)),
+                          positionB.clone().add(compB.position.clone().rotate(angleB)),
                           angleB+compB.angle
                         );
                         if(col){
