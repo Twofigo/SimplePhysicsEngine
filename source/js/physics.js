@@ -151,14 +151,13 @@ var physics = (function(){
             return;
         }
         this.timestamp = timestamp;
-        // forces
-        for(var con of this.constraints){
-            con.compute(timestamp);
-            con.resolve(timestamp);
-        }
-        this.collisions = [];
 
+        for (var obj of this.rigidBodies){
+            obj.setForce(this.gravity.clone().scale(obj.geometry.mass));
+        }
         // collisions
+
+        this.collisions = [];
         for (var k1=0; k1<this.rigidBodies.length; k1++){
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                 if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
@@ -174,6 +173,11 @@ var physics = (function(){
         }
         for(var col of this.collisions){
             col.resolve();
+        }
+
+        for(var con of this.constraints){
+            con.compute(timestamp);
+            con.resolve(timestamp);
         }
     }
     Scene.prototype.draw = function(timestamp){
@@ -771,7 +775,7 @@ var physics = (function(){
         if (!totalMass) return;
 
         var e = (this.bodyA.geometry.material.restitution + this.bodyB.geometry.material.restitution)/2;
-        if(relativeV.dot(this.normal)<10) e = 0;
+        //if(relativeV.dot(this.normal)<10) e = 0;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
