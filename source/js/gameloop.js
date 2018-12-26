@@ -116,7 +116,7 @@ Grabber.prototype.move = function(data){
 
 function mainloop(timestamp){
 	ins.update(timestamp);
-	ins.draw();
+	ins.draw(timestamp);
 
 	window.requestAnimationFrame(mainloop);
 }
