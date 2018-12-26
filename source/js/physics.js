@@ -492,6 +492,7 @@ var physics = (function(){
             this.position.add(accelleration.clone().scale(time * time * 0.5));
             this.velocity.add(accelleration.scale(time));
         }
+
         if (this.angularVelocity){
             this.angle += this.angularVelocity * time;
         }
@@ -504,8 +505,6 @@ var physics = (function(){
         if (this.angle < 0) this.angle=2*Math.PI + (this.angle%(2*Math.PI));
     }
     RigidBody.prototype.reverseUpdate = function(time){
-        this.timestamp-= time;
-
         var angularAccelleration = this.geometry.torque*this.geometry.inv_inertia;
         if (angularAccelleration){
             this.angularVelocity -= angularAccelleration*time;
@@ -679,8 +678,6 @@ var physics = (function(){
 
       var time = this.offset.length()/totalV;
       this.timestamp -= time;
-      this.bodyA.timestamp = this.timestamp;
-      this.bodyB.timestamp = this.timestamp;
 
       this.offset = false;
     }
@@ -697,6 +694,7 @@ var physics = (function(){
         if (!totalMass) return;
 
         var e = (this.bodyA.geometry.material.restitution + this.bodyB.geometry.material.restitution)/2;
+        if(relativeV.dot(this.normal)<10) e = 0;
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
