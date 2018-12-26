@@ -75,6 +75,10 @@ function setup()
     ins.gravity.y=300;
     ins.setup(document.getElementById("gameboard"));
 
+    this.obj = new physics.RigidBody();
+    this.obj.geometry = new physics.Geometry();
+    var r = new physics.Rope()
+
     var tracker = new physics.InputTracker();
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
@@ -99,7 +103,7 @@ Grabber.prototype.grabAndDrop = function(data){
         var body = ins.bodyAtPoint(cordinate);
         if(!body) return;
         this.constraint.bodyB = body;
-        this.constraint.positionB = cordinate.subtract(body.position).rotate(-body.angle)
+        this.constraint.positionB = cordinate.subtract(body.getPosition(data.timestamp)).rotate(-body.getAngle(data.timestamp))
     }
     if(!data.state)
     {
@@ -109,7 +113,7 @@ Grabber.prototype.grabAndDrop = function(data){
 }
 Grabber.prototype.move = function(data){
     var cordinate = ins.coordinateConvert(data.position);
-
+    this.obj.setTimeStamp(data.timeStamp);
     this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timestamp);
     this.obj.setPosition(cordinate, data.timestamp);
 }
