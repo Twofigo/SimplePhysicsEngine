@@ -16,8 +16,8 @@ function setup()
     geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
-    obj.setPosition(0,0,-Math.PI/4);
-    obj.setVelocity(30,40,0);
+    obj.setStartPosition(0,0,-Math.PI/4);
+    obj.setStartVelocity(30,40,0);
     ins.add(obj);
 
     var geo = new physics.Geometry();
@@ -25,7 +25,7 @@ function setup()
     geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
-    obj.setPosition(0,100,0);
+    obj.setStartPosition(0,100,0);
     ins.add(obj);
 
     // floor;
@@ -41,13 +41,13 @@ function setup()
 
     var obj = new physics.RigidBody();
     obj.geometry = geo;
-    obj.setPosition(0,400);
+    obj.setStartPosition(0,400);
     ins.add(obj);
 
     // roof
     var obj = new physics.RigidBody();
     obj.geometry = geo;
-    obj.setPosition(0,-400);
+    obj.setStartPosition(0,-400);
     ins.add(obj);
 
     // left wall
@@ -63,13 +63,13 @@ function setup()
 
     var obj = new physics.RigidBody();
     obj.geometry = geo;
-    obj.setPosition(-500,0);
+    obj.setStartPosition(-500,0);
     ins.add(obj);
 
     // right wall
     var obj = new physics.RigidBody();
     obj.geometry = geo;
-    obj.setPosition(500,0);
+    obj.setStartPosition(500,0);
     ins.add(obj);
 
     ins.gravity.y=300;
@@ -110,8 +110,8 @@ Grabber.prototype.grabAndDrop = function(data){
 Grabber.prototype.move = function(data){
     var cordinate = ins.coordinateConvert(data.position);
 
-    this.obj.velocity = data.velocity.scale(0.5).scale(1/ins.zoom);
-    this.obj.position = cordinate;
+    this.obj.steVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timestamp);
+    this.obj.setPosition(cordinate, data.timestamp);
 }
 
 function mainloop(timestamp){

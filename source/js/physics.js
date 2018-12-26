@@ -482,6 +482,14 @@ var physics = (function(){
         // position
         this.timestamp = timestamp;
     }
+    RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
+        this.position.set(x,y);
+        this.angle = angle;
+    }
+    RigidBody.prototype.setStartVelocity = function(vX=0, vY=0, vAngle=0){
+      this.velocity.set(vX,vY);
+      this.angularVelocity = vAngle;
+    }
     RigidBody.prototype.getPosition = function(timestamp){
         var time = (timestamp - this.timestamp) / 1000;
 
@@ -495,7 +503,7 @@ var physics = (function(){
       var time = (timestamp - this.timestamp) / 1000;
 
       var velocity = this.velocity;
-      position.add(this.force.clone().scale(this.geometry.inv_mass).scale(time));
+      velocity.add(this.force.clone().scale(this.geometry.inv_mass).scale(time));
 
       return velocity;
     }
@@ -1078,6 +1086,25 @@ var physics = (function(){
         this.addListener("m2");
         this.addListener("move");
     }
+    InputTracker.prototype.addListener = function(key, func){
+      if (!this.listeners[""+key]){
+        this.listeners[""+key] = {state:false, callouts:[]};
+      }
+      if (func) this.listeners[""+key].callouts.push(func);
+    }
+    InputTracker.prototype.removeListener = function(key, func) {
+        if (!this.listeners[""+key]) return
+        var index = this.listeners[""+key].callouts.indexOf(func);
+        if(index > -1) {
+            this.listeners[""+key].callouts.splice(index, 1);
+        }
+    }
+    InputTracker.prototype.enable = function(){
+      this.disabled = false;
+    }
+    InputTracker.prototype.disable = function(){
+        this.disabled = true;
+    }
     InputTracker.prototype.set = function(canvas){
         if (this.canvas) return;
         this.canvas = canvas;
@@ -1098,6 +1125,12 @@ var physics = (function(){
     InputTracker.prototype.unset = function(){
         return; // WIP
     }
+    InputTracker.prototype.keyIsSet = function(key){
+        if(!this.listeners[""+key]) return false;
+        if(this.listeners[""+key].callouts.length === 0) return false;
+        return true;
+    }
+
     InputTracker.prototype.notify = function(key, data=undefined){
         if (!this.listeners[""+key]) return
 
@@ -1105,34 +1138,11 @@ var physics = (function(){
             f(data);
         }
     }
-    InputTracker.prototype.addListener = function(key, func){
-        if (!this.listeners[""+key]){
-            this.listeners[""+key] = {state:false, callouts:[]};
-        }
-        if (func) this.listeners[""+key].callouts.push(func);
-    }
-    InputTracker.prototype.removeListener = function(key, func) {
-        if (!this.listeners[""+key]) return
-        var index = this.listeners[""+key].callouts.indexOf(func);
-        if(index > -1) {
-            this.listeners[""+key].callouts.splice(index, 1);
-        }
-    }
-    InputTracker.prototype.enable = function(){
-        this.disabled = false;
-    }
-    InputTracker.prototype.disable = function(){
-        this.disabled = true;
-    }
     InputTracker.prototype.getKeyState = function(key){
         if(!this.listeners[""+key]) return false;
         return this.listeners[""+key].state;
     }
-    InputTracker.prototype.keyIsSet = function(key){
-        if(!this.listeners[""+key]) return false;
-        if(this.listeners[""+key].callouts.length === 0) return false;
-        return true;
-    }
+
     InputTracker.prototype.keyStart = function(event){
         if(this.disabled)return;
 
@@ -1140,7 +1150,7 @@ var physics = (function(){
         if(!this.keyIsSet(key)) return;
         if(this.getKeyState(key)) return;
         this.listeners[""+key].state = true;
-        tthis.notify(key, {state:true});
+        tthis.notify(key, {state:true, timestamp:event.timeStamp});
     }
     InputTracker.prototype.keyEnd = function(event){
         if(this.disabled)return;
@@ -1149,7 +1159,7 @@ var physics = (function(){
         if(!this.keyIsSet(key)) return;
         if(!this.getKeyState(key)) return;
         this.listeners[""+key].state = false;
-        this.notify(key, {state:false});
+        this.notify(key, {state:false, timestamp:event.timeStamp});
     }
     InputTracker.prototype.cursorMove = function(event){
        if(this.disabled)return;
@@ -1159,13 +1169,13 @@ var physics = (function(){
        state: true,
        position: this.cursorPosition.clone(),
        positionDelta: this.cursorPositionDelta.clone(),
-       velocity: this.cursorVelocity.clone()};
+       velocity: this.cursorVelocity.clone(),
+       timestamp: event.timeStamp};
 
        this.notify("move", data);
     }
     InputTracker.prototype.cursorStart = function(event){
         if(this.disabled)return;
-
 
         if(event instanceof MouseEvent){
             var key = event.buttons;
@@ -1189,7 +1199,8 @@ var physics = (function(){
         state: true,
         position: this.cursorPosition.clone(),
         positionDelta: this.cursorPositionDelta.clone(),
-        velocity: this.cursorVelocity.clone()};
+        velocity: this.cursorVelocity.clone(),
+        timestamp: event.timeStamp};
 
         this.notify(key, data)
     }
@@ -1224,10 +1235,12 @@ var physics = (function(){
         state: false,
         position: this.cursorPosition.clone(),
         positionDelta: this.cursorPositionDelta.clone(),
-        velocity: this.cursorVelocity.clone()};
+        velocity: this.cursorVelocity.clone(),
+        timestamp: event.timeStamp};
 
         this.notify(key, data);
     }
+
     InputTracker.prototype.getCursorPos = function(event){
         var boxInfo = this.canvas.getBoundingClientRect();
 
@@ -1244,7 +1257,7 @@ var physics = (function(){
             event.touches[0].clientY-boxInfo.top
             );
         }
-    }
+      }
     InputTracker.prototype.calcCursorVelocity = function(event){
 
        var timediff = event.timeStamp-this.timestamp;
