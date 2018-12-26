@@ -792,6 +792,10 @@ var physics = (function(){
         collision.point = new Vector();
         collision.offset = new Vector();
 
+        var positionA = bodyA.getPosition(timestamp);
+        var positionB = bodyB.getPosition(timestamp);
+        var angleA = bodyA.getAngle(timestamp);
+        var angleB = bodyB.getAngle(timestamp);
         var collisions = [];
         for(var compA of bodyA.geometry.iterateComponents()){
             for(var compB of bodyB.geometry.iterateComponents()){
@@ -799,11 +803,11 @@ var physics = (function(){
                     if(compB.obj instanceof Polygon){
                         var col = this.polyPoly(
                           compA.obj,
-                          bodyA.position.clone().add(compA.position.clone().rotate(bodyA.angle)),
-                          bodyA.angle+compA.angle,
+                          positionA.add(compA.position.clone().rotate(angleA)),
+                          angleA+compA.angle,
                           compB.obj,
-                          bodyB.position.clone().add(compB.position.clone().rotate(bodyB.angle)),
-                          bodyB.angle+compB.angle
+                          positionB.add(compB.position.clone().rotate(angleB)),
+                          angleB+compB.angle
                         );
                         if(col){
                             collisions.push(col);
