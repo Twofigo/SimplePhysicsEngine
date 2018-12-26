@@ -110,7 +110,7 @@ Grabber.prototype.grabAndDrop = function(data){
 Grabber.prototype.move = function(data){
     var cordinate = ins.coordinateConvert(data.position);
 
-    this.obj.steVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timestamp);
+    this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timestamp);
     this.obj.setPosition(cordinate, data.timestamp);
 }
 
