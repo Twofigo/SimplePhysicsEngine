@@ -133,10 +133,6 @@ var physics = (function(){
         {
             this.rigidBodies.push(obj);
         }
-        else if (obj instanceof Entity)
-        {
-            this.enteties.push(obj)
-        }
         else if (obj instanceof Constraint)
         {
             this.constraints.push(obj)
@@ -462,44 +458,49 @@ var physics = (function(){
        }
     }
 
+ /*
     var Entity = function(geometry = false){
         this.position   = new Vector();
         this.angle      = 0;
 
         this.geometry   = geometry;
     }
-    Entity.prototype.setPosition = function(x = 0, y = 0, angle = 0){
-        this.position.x = x;
-        this.position.y = y;
-        this.angle      = angle;
-    }
-
-    var RigidBody = function(geometry = false){
-        Entity.call(this, geometry);
-
-        this.velocity			= new Vector();
-        this.acceleration   	= new Vector();
-        
-        this.angVelocity	    = 0;
-        this.angAcceleration	= 0;
-
-        this.timeStamp    = false;
-        this.changeCue    = false;
-    }
-    RigidBody.prototype = Object.create(Entity.prototype);
-    RigidBody.prototype.setTimeStamp = function(timeStamp){
-        this.timeStamp = timeStamp;
-    }
-    RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
+    Entity.prototype.setPosition = function(x=0, y=0, angle=0){
         this.position.set(x,y);
         this.angle = angle;
     }
+ */
+ 
+    var RigidBody = function(geometry = false){
+        this.geometry   = geometry;
+        this.changeCue    = [];
+        
+            var snapshot = {
+            timeStamp: 0,
+            position: new Vector(),
+            velocity: new Vector(),
+            acceleration: new Vector(),
+            angle: 0,
+            angVelocity: 0,
+            angAcceleration: 0
+            }
+            this.changeCue.push(snapshot);
+    }
+    RigidBody.prototype.setTimeStamp = function(timeStamp){
+        this.timeStamp = timeStamp;
+    }
+
+    RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
+      this.setPosition(new Vector(x, y), 0);
+      this.setAngle(angle, 0);
+    }
     RigidBody.prototype.setStartVelocity = function(vX=0, vY=0, vAngle=0){
-      this.velocity.set(vX,vY);
-      this.angVelocity = vAngle;
+      this.setVelocity(new Vector(vX, vY), 0);
+      this.setAngVelocity(vAngle, 0);
     }
 
     RigidBody.prototype.update = function(timeStamp){
+        return;
         if(!this.timeStamp)this.timeStamp = timeStamp;
         var time = (timeStamp - this.timeStamp) / 1000;
         if (!time) return;
@@ -512,40 +513,73 @@ var physics = (function(){
         this.setTimeStamp(timeStamp);
     }
     RigidBody.prototype.getPosition = function(timeStamp){
-        var time = (timeStamp - this.timeStamp) / 1000;
-
-        var position = this.position.clone();
-        position.add(this.velocity.clone().scale(time));
-        position.add(this.acceleration.clone().scale(time*time*0.5));
-
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
+        
+        var position = snapshot.position.clone();
+        position.add(snapshot.velocity.clone().scale(time));
+        position.add(snapshot.acceleration.clone().scale(time*time*0.5));       
+            
         return position;
     }
     RigidBody.prototype.getVelocity = function(timeStamp){
-      var time = (timeStamp - this.timeStamp) / 1000;
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
+        
+        var velocity = snapshot.velocity.clone();
+        velocity.add(snapshot.acceleration.clone().scale(time));
 
-      var velocity = this.velocity.clone();
-      velocity.add(this.acceleration.clone().scale(time));
+        return velocity;
+    }
+    RigidBody.prototype.getAcceleration = function(timeStamp){
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
+        
+        var acceleration = snapshot.acceleration.clone();
 
-      return velocity;
+        return acceleration;
     }
     RigidBody.prototype.getAngle = function(timeStamp){
-        var time = (timeStamp - this.timeStamp) / 1000;
-
-        var angle = this.angle;
-        angle+=this.angVelocity*time;
-        angle+=this.angAcceleration*time*time*0.5;
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
+        
+        var angle = snapshot.angle;
+        angle+=snapshot.angVelocity*time;
+        angle+=snapshot.angAcceleration*time*time*0.5;
         angle = loopRadian(angle);
 
         return angle;
     }
     RigidBody.prototype.getAngVelocity = function(timeStamp){
-        var time = (timeStamp - this.timeStamp) / 1000;
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
 
-        var angVelocity = this.angVelocity;
-        angVelocity += this.angAcceleration*time;
+        var angVelocity = snapshot.angVelocity;
+        angVelocity += snapshot.angAcceleration*time;
 
         return angVelocity;
     }
+    RigidBody.prototype.getAngAcceleration = function(timeStamp){
+        var k;
+        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
+        var snapshot = this.changeCue[k];
+        var time = (timeStamp - snapshot.timeStamp) / 1000;
+
+        var angAcceleration = snapshot.angAcceleration;
+
+        return angAcceleration;
+    }
+    
     
     RigidBody.prototype.getVelocityInPoint = function(coordinate, timeStamp){
         var radian = coordinate.clone(
@@ -568,49 +602,72 @@ var physics = (function(){
 
         return inv_mass;
     }
-    
+    RigidBody.prototype.createSnapshot = function(timeStamp){
+        while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
+            this.changeCue.splice(-1,1);
+        }
+        
+        if (this.changeCue[this.changeCue.length-1].timeStamp != timeStamp){
+            var snapshot = {
+                timeStamp: timeStamp,
+                position: this.getPosition(timeStamp),
+                velocity: this.getVelocity(timeStamp),
+                acceleration: this.getAcceleration(timeStamp),
+                angle: this.getAngle(timeStamp),
+                angVelocity: this.getAngVelocity(timeStamp),
+                angAcceleration: this.getAngAcceleration(timeStamp)
+            }
+            this.changeCue.push(snapshot);
+        }
+    }
     
     RigidBody.prototype.setPosition = function(position, timeStamp){
-        this.update(timeStamp);
-        this.position = position.clone();
+        this.createSnapshot(timeStamp)
+        this.changeCue[this.changeCue.length-1].position = position.clone();
     }
     RigidBody.prototype.setVelocity = function(velocity, timeStamp){
-      this.update(timeStamp);
-      this.velocity = velocity.clone();
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].velocity = velocity.clone();
     }
     RigidBody.prototype.setAcceleration = function(acceleration, timeStamp){
-        this.update(timeStamp);
-        this.acceleration = acceleration.clone();
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].acceleration = acceleration.clone();
     }
     RigidBody.prototype.setAngle = function(angle, timeStamp){
-        this.update(timeStamp);
-        this.angle = angle;
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angle = angle;
     }
     RigidBody.prototype.setAngVelocity = function(angVelocity, timeStamp){
-        this.update(timeStamp);
-        this.angVelocity = angVelocity;
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angVelocity = angVelocity;
     }
     RigidBody.prototype.setAngAcceleration = function(angAcceleration, timeStamp){
-        this.update(timeStamp);
-        this.angAcceleration = angAcceleration;
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angAcceleration = angAcceleration;
     }
     RigidBody.prototype.addPosition = function(position, timeStamp){
-        this.setPosition(this.getPosition(timeStamp).add(position), timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].position.add(position);
     }
     RigidBody.prototype.addVelocity = function(velocity, timeStamp){
-        this.setVelocity(this.getVelocity(timeStamp).add(velocity), timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].velocity.add(velocity);
     }
     RigidBody.prototype.addAcceleration = function(acceleration, timeStamp){
-        this.setAcceleration(this.acceleration.clone().add(acceleration), timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].acceleration.add(acceleration);
     }
     RigidBody.prototype.addAngle = function(angle, timeStamp){
-        this.setAngle(this.getAngle(timeStamp)+angle, timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angle+=angle;
     }
     RigidBody.prototype.addAngVelocity = function(angVelocity, timeStamp){
-        this.setAngVelocity(this.getAngVelocity(timeStamp)+angVelocity, timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angVelocity+=angVelocity;
     }
     RigidBody.prototype.addAngAcceleration = function(angAcceleration, timeStamp){
-        this.setAngAcceleration(this.angAcceleration+angAcceleration, timeStamp);
+        this.createSnapshot(timeStamp);
+        this.changeCue[this.changeCue.length-1].angAcceleration+=angAcceleration;
     }
 
     RigidBody.prototype.applyImpulse = function(coordinate, impulse, timeStamp){
@@ -722,8 +779,8 @@ var physics = (function(){
         this.bodyB.applyImpulse(pointB, impulse.reverse(), timeStamp);
 
         // offsetfix
-        this.bodyA.position.add(this.offset.clone().scale(invMssA/totalMass));
-        this.bodyB.position.add(this.offset.clone().scale(-invMssB/totalMass));
+        this.bodyA.addPosition(this.offset.clone().scale(invMssA/totalMass), timeStamp);
+        this.bodyB.addPosition(this.offset.clone().scale(-invMssB/totalMass), timeStamp);
     }
 
     var ElasticRope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
