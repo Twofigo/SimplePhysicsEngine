@@ -93,7 +93,7 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     this.obj.geometry = new physics.Geometry();
-    this.constraint = new physics.Joint(this.obj, new physics.Vector(), this.obj, new physics.Vector());
+    this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(), 0);
     ins.add(this.constraint);
 }
 Grabber.prototype.grabAndDrop = function(data){

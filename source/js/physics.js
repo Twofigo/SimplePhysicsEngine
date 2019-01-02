@@ -783,8 +783,8 @@ var physics = (function(){
         this.bodyB.applyForce(pointB, force.reverse(), timeStamp);
     }
 
-    var Rope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
-        Joint.call(this, bodyA, positionA, bodyB, positionB, stiffness);
+    var Rope = function(bodyA, positionA, bodyB, positionB, length=200){
+        Joint.call(this, bodyA, positionA, bodyB, positionB);
         this.ropeLength = length;
     }
     Rope.prototype = Object.create(Constraint.prototype);
@@ -799,8 +799,9 @@ var physics = (function(){
         Joint.prototype.resolve.call(this, timeStamp);
     }
 
-    var ElasticRope = function(bodyA, positionA, bodyB, positionB, stiffness, length){
-        Rope.call(this, bodyA, positionA, bodyB, positionB, stiffness, length);
+    var ElasticRope = function(bodyA, positionA, bodyB, positionB, length){
+        Rope.call(this, bodyA, positionA, bodyB, positionB, length);
+        this.stiffness = stiffness;
     }
     ElasticRope.prototype = Object.create(Rope.prototype);
     ElasticRope.prototype = Object.create(ElasticJoint.prototype);
