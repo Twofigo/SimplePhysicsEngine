@@ -705,15 +705,15 @@ var physics = (function(){
     Constraint.prototype.compute = function(timeStamp){}
     Constraint.prototype.resolve = function(timeStamp){}
 
-    var ElasticJoint = function(bodyA, positionA, bodyB, positionB, stiffness=200){
+    
+    var Joint = function(bodyA, positionA, bodyB, positionB){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
-        this.stiffness = stiffness;
 
         this.normal = new Vector();
         this.offset = false;
     }
-    ElasticJoint.prototype = Object.create(Constraint.prototype);
-    ElasticJoint.prototype.compute = function(timeStamp){
+    Joint.prototype = Object.create(Constraint.prototype);
+    Joint.prototype.compute = function(timeStamp){
         this.offset = this.bodyB.getPosition(timeStamp
         ).add(this.positionB.clone(
         ).rotate(this.bodyB.getAngle(timeStamp)
@@ -725,31 +725,6 @@ var physics = (function(){
         )));
 
         this.normal = this.offset.clone().normalize();
-    }
-    ElasticJoint.prototype.resolve = function(timeStamp){
-        if (this.offset.squareLength() == 0) return
-
-        var pointA = this.positionA.clone(
-        ).rotate(this.bodyA.getAngle(timeStamp)
-        ).add(this.bodyA.getPosition(timeStamp)
-        );
-        var pointB = this.positionB.clone(
-        ).rotate(this.bodyB.getAngle(timeStamp)
-        ).add(this.bodyB.getPosition(timeStamp)
-        );
-
-        var force = this.offset.clone().scale(this.stiffness);
-
-        this.bodyA.applyForce(pointA, force, timeStamp);
-        this.bodyB.applyForce(pointB, force.reverse(), timeStamp);
-    }
-
-    var Joint = function(bodyA, positionA, bodyB, positionB, stiffness){
-        ElasticJoint.call(this, bodyA, positionA, bodyB, positionB, stiffness);
-    }
-    Joint.prototype = Object.create(ElasticJoint.prototype);
-    Joint.prototype.compute = function(timeStamp){
-        ElasticJoint.prototype.compute.call(this, timeStamp);
     }
     Joint.prototype.resolve = function(timeStamp){
         if (this.offset.squareLength() == 0) return
@@ -782,34 +757,60 @@ var physics = (function(){
         this.bodyB.addPosition(this.offset.clone().scale(-invMssB/totalMass), timeStamp);
     }
 
-    var ElasticRope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
-        ElasticJoint.call(this, bodyA, positionA, bodyB, positionB, stiffness);
+    var ElasticJoint = function(bodyA, positionA, bodyB, positionB, stiffness=200){
+        Joint.call(this, bodyA, positionA, bodyB, positionB);
+        this.stiffness = stiffness;
+    }
+    ElasticJoint.prototype = Object.create(Joint.prototype);
+    ElasticJoint.prototype.compute = function(timeStamp){
+        Joint.prototype.compute.call(this, timeStamp);
+    }
+    ElasticJoint.prototype.resolve = function(timeStamp){
+        if (this.offset.squareLength() == 0) return
+
+        var pointA = this.positionA.clone(
+        ).rotate(this.bodyA.getAngle(timeStamp)
+        ).add(this.bodyA.getPosition(timeStamp)
+        );
+        var pointB = this.positionB.clone(
+        ).rotate(this.bodyB.getAngle(timeStamp)
+        ).add(this.bodyB.getPosition(timeStamp)
+        );
+
+        var force = this.offset.clone().scale(this.stiffness);
+
+        this.bodyA.applyForce(pointA, force, timeStamp);
+        this.bodyB.applyForce(pointB, force.reverse(), timeStamp);
+    }
+
+    var Rope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
+        Joint.call(this, bodyA, positionA, bodyB, positionB, stiffness);
         this.ropeLength = length;
     }
-    ElasticRope.prototype = Object.create(Constraint.prototype);
-    ElasticRope.prototype = Object.create(ElasticJoint.prototype);
-    ElasticRope.prototype.compute = function(timeStamp){
-        ElasticJoint.prototype.compute.call(this, timeStamp);
+    Rope.prototype = Object.create(Constraint.prototype);
+    Rope.prototype = Object.create(Joint.prototype);
+    Rope.prototype.compute = function(timeStamp){
+        Joint.prototype.compute.call(this, timeStamp);
 
         if(this.offset.length()<this.ropeLength) this.offset.scale(0);
         else this.offset.subtract(this.normal.clone().scale(this.ropeLength))
-    }
-    ElasticRope.prototype.resolve = function(timeStamp){
-        ElasticJoint.prototype.resolve.call(this, timeStamp);
-    }
-
-    var Rope = function(bodyA, positionA, bodyB, positionB, stiffness, length){
-        ElasticRope.call(this, bodyA, positionA, bodyB, positionB, stiffness, length);
-    }
-    Rope.prototype = Object.create(ElasticRope.prototype);
-    Rope.prototype = Object.create(Joint.prototype);
-    Rope.prototype.compute = function(timeStamp){
-        ElasticRope.prototype.compute.call(this, timeStamp);
     }
     Rope.prototype.resolve = function(timeStamp){
         Joint.prototype.resolve.call(this, timeStamp);
     }
 
+    var ElasticRope = function(bodyA, positionA, bodyB, positionB, stiffness, length){
+        Rope.call(this, bodyA, positionA, bodyB, positionB, stiffness, length);
+    }
+    ElasticRope.prototype = Object.create(Rope.prototype);
+    ElasticRope.prototype = Object.create(ElasticJoint.prototype);
+    ElasticRope.prototype.compute = function(timeStamp){
+        Rope.prototype.compute.call(this, timeStamp);
+    }
+    ElasticRope.prototype.resolve = function(timeStamp){
+        ElasticJoint.prototype.resolve.call(this, timeStamp);
+    }
+    
     var Collision = function Collision(){
         this.bodyA				= false;
         this.bodyB				= false;
