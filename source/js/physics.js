@@ -765,7 +765,6 @@ var physics = (function(){
 
         var relativeV = this.bodyA.getVelocityInPoint(pointA, timeStamp
         ).subtract(this.bodyB.getVelocityInPoint(pointB, timeStamp));
-        if (relativeV.dot(this.normal)>0) return;
 
         var invMssA = this.bodyA.getInvMassInPoint(pointA, this.normal, timeStamp);
         var invMssB = this.bodyB.getInvMassInPoint(pointB, this.normal, timeStamp);
