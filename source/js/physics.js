@@ -489,7 +489,6 @@ var physics = (function(){
     RigidBody.prototype.setTimeStamp = function(timeStamp){
         this.timeStamp = timeStamp;
     }
-
     RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
       this.setPosition(new Vector(x, y), 0);
       this.setAngle(angle, 0);
@@ -498,7 +497,7 @@ var physics = (function(){
       this.setVelocity(new Vector(vX, vY), 0);
       this.setAngVelocity(vAngle, 0);
     }
-
+    
     RigidBody.prototype.update = function(timeStamp){
         return;
         if(!this.timeStamp)this.timeStamp = timeStamp;
@@ -580,7 +579,6 @@ var physics = (function(){
         return angAcceleration;
     }
     
-    
     RigidBody.prototype.getVelocityInPoint = function(coordinate, timeStamp){
         var radian = coordinate.clone(
         ).subtract(this.getPosition(timeStamp));
@@ -602,6 +600,10 @@ var physics = (function(){
 
         return inv_mass;
     }
+    RigidBody.prototype.getTimeForDist = function(distance, reverse = false){
+        return getTimeForDist(this.velocity, this.acceleration, distance, reverse);
+    }
+    
     RigidBody.prototype.createSnapshot = function(timeStamp){
         while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
             this.changeCue.splice(-1,1);
@@ -620,7 +622,6 @@ var physics = (function(){
             this.changeCue.push(snapshot);
         }
     }
-    
     RigidBody.prototype.setPosition = function(position, timeStamp){
         this.createSnapshot(timeStamp)
         this.changeCue[this.changeCue.length-1].position = position.clone();
@@ -1093,7 +1094,7 @@ var physics = (function(){
         return true
     }
     var collisionTests = new CollisionTests();
-
+    
     var Compiler = function(){}
     Compiler.prototype.compileGeometryAttributes = function(geometry){
         var dataFull = {
@@ -1163,11 +1164,26 @@ var physics = (function(){
         return data;
     }
     var compiler = new Compiler();
-
+    
+    
+    // helper functions
+    
     function loopRadian(radian){
         if (radian > 2*Math.PI) radian%=2*Math.PI;
         if (radian < 0) radian=2*Math.PI + (radian%(2*Math.PI));
         return radian;
+    }
+    function getTimeForDist(velocity, acceleration, distance, reverse = false){
+        // t= - v/a +- Math.sqrt((v/a)^2 + 2s/a)
+        var normal = distance.clone().normalize();
+        var s = distance.length();
+        var a = acceleration.dot(normal);
+        var v = velocity.dot(normal);
+        
+        var vta = v/a;
+        var t = -vta + Math.sqrt(vta*vta + 2*s/a)*(reverse?-1:1);
+        
+        return t;
     }
 
     // extended -------------------------------------------------------------------------------------------------
