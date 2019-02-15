@@ -407,8 +407,8 @@ var physics = (function(){
         
         this.moveOrigin(data.offset);
         this.surfaceArea = data.surfaceArea;
-        //this.minR = data.minR;
-        //this.maxR = data.maxR;
+        this.minR = data.minR;
+        this.maxR = data.maxR;
         
         this.mass = data.mass;
         this.inertia = data.inertia;
@@ -1117,10 +1117,25 @@ var physics = (function(){
         "offset": new Vector()
         };
 
-        var d
         for(var comp of geometry.iterateComponents()){
             data = false
             if (comp.obj instanceof Polygon){
+                for (var vertex of comp.obj.iterateVertices()){
+                    var r = vertex.clone().rotate(comp.angle).add(comp.position).length();
+                    if (!dataFull.maxR){
+                        dataFull.maxR = r;
+                        dataFull.minR = r;
+                        continue;
+                    }
+                    if (r>dataFull.maxR){
+                        dataFull.maxR = r;
+                        continue;
+                    }
+                    if (r<dataFull.minR){
+                        dataFull.minR = r;
+                    }
+                }
+                
                 data = this.compilePolygonAttributes(comp.obj, geometry.material);
             }
 
