@@ -359,16 +359,23 @@ var physics = (function(){
         return false; // No collision
     }
 
-    var Geometry = function(texture=default_texture, material=default_material){
+    var Geometry = function(texture, material){
         this.components = [];
-        this.texture = texture;
-
-        this.material = material;
-        this.inertia  = 0;
-        this.mass = 0;
-        this.inv_mass = 0;
-        this.inv_inertia = 0;
-        this.surfaceArea  = 0;
+        
+        this.texture;
+        this.material;
+       
+        this.surfaceArea;
+        this.minR;
+        this.maxR;
+       
+        this.inertia;
+        this.mass;
+        this.inv_mass;
+        this.inv_inertia;
+        
+        this.setTexture(texture);
+        this.setMaterial(material);
     }
     Geometry.prototype.addComponent = function(component, x=0, y=0, angle=0){
         var data = {
@@ -378,8 +385,12 @@ var physics = (function(){
         }
         this.components.push(data);
     }
-    Geometry.prototype.setTexture = function(texture){
+    Geometry.prototype.setTexture = function(texture=default_texture){
         this.texture = texture;
+    }
+    Geometry.prototype.setMaterial = function(material=default_material){
+        this.material = material;
+        
     }
     Geometry.prototype.iterateComponents = function*(){
         for(var comp of this.components){
@@ -391,15 +402,19 @@ var physics = (function(){
             comp.position.subtract(offset);
         }
     }
-    Geometry.prototype.compile = function() {
-        var data = compiler.compileGeometryAttributes(this);
-
+    Geometry.prototype.compile = function(fixed = false) {
+        var data = compiler.compileGeometryAttributes(this, fixed);
+        
+        this.moveOrigin(data.offset);
+        this.surfaceArea = data.surfaceArea;
+        this.minR = data.minR;
+        this.maxR = data.maxR;
+        
         this.mass = data.mass;
         this.inertia = data.inertia;
-        this.inv_mass = 1/data.mass;
-        this.inv_inertia = 1/data.inertia;
-        this.surfaceArea = data.surfaceArea;
-        this.moveOrigin(data.offset);
+        this.inv_mass = data.inv_mass;
+        this.inv_inertia = data.inv_inertia;
+
     }
 
     var Polygon = function(vertices = []){
@@ -489,7 +504,6 @@ var physics = (function(){
     RigidBody.prototype.setTimeStamp = function(timeStamp){
         this.timeStamp = timeStamp;
     }
-
     RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
       this.setPosition(new Vector(x, y), 0);
       this.setAngle(angle, 0);
@@ -498,7 +512,7 @@ var physics = (function(){
       this.setVelocity(new Vector(vX, vY), 0);
       this.setAngVelocity(vAngle, 0);
     }
-
+    
     RigidBody.prototype.update = function(timeStamp){
         return;
         if(!this.timeStamp)this.timeStamp = timeStamp;
@@ -580,7 +594,6 @@ var physics = (function(){
         return angAcceleration;
     }
     
-    
     RigidBody.prototype.getVelocityInPoint = function(coordinate, timeStamp){
         var radian = coordinate.clone(
         ).subtract(this.getPosition(timeStamp));
@@ -602,6 +615,10 @@ var physics = (function(){
 
         return inv_mass;
     }
+    RigidBody.prototype.getTimeForDist = function(distance, reverse = false){
+        return getTimeForDist(this.velocity, this.acceleration, distance, reverse);
+    }
+    
     RigidBody.prototype.createSnapshot = function(timeStamp){
         while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
             this.changeCue.splice(-1,1);
@@ -620,7 +637,6 @@ var physics = (function(){
             this.changeCue.push(snapshot);
         }
     }
-    
     RigidBody.prototype.setPosition = function(position, timeStamp){
         this.createSnapshot(timeStamp)
         this.changeCue[this.changeCue.length-1].position = position.clone();
@@ -694,7 +710,6 @@ var physics = (function(){
         var angAcceleration = radian.cross(force) * this.geometry.inv_inertia;
         this.addAngAcceleration(angAcceleration, timeStamp);
     }
- 
 
     var Constraint = function(bodyA, positionA, bodyB, positionB){
         this.bodyA = bodyA;
@@ -704,7 +719,6 @@ var physics = (function(){
     }
     Constraint.prototype.compute = function(timeStamp){}
     Constraint.prototype.resolve = function(timeStamp){}
-
     
     var Joint = function(bodyA, positionA, bodyB, positionB){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
@@ -1093,9 +1107,9 @@ var physics = (function(){
         return true
     }
     var collisionTests = new CollisionTests();
-
+    
     var Compiler = function(){}
-    Compiler.prototype.compileGeometryAttributes = function(geometry){
+    Compiler.prototype.compileGeometryAttributes = function(geometry, fixed){
         var dataFull = {
         "mass":0,
         "inertia":0,
@@ -1103,22 +1117,49 @@ var physics = (function(){
         "offset": new Vector()
         };
 
-        var d
         for(var comp of geometry.iterateComponents()){
             data = false
             if (comp.obj instanceof Polygon){
+                for (var vertex of comp.obj.iterateVertices()){
+                    var r = vertex.clone().rotate(comp.angle).add(comp.position).length();
+                    if (!dataFull.maxR){
+                        dataFull.maxR = r;
+                        dataFull.minR = r;
+                        continue;
+                    }
+                    if (r>dataFull.maxR){
+                        dataFull.maxR = r;
+                        continue;
+                    }
+                    if (r<dataFull.minR){
+                        dataFull.minR = r;
+                    }
+                }
+                
                 data = this.compilePolygonAttributes(comp.obj, geometry.material);
             }
 
             var d = comp.position.length();
 
             dataFull.surfaceArea+=data.surfaceArea;
-            dataFull.offset.add(comp.position.clone().add(data.offset).scale(geometry.material.density*data.surfaceArea));
-            dataFull.inertia+= geometry.material.density*(data.inertia + data.surfaceArea*(d*d))
+            dataFull.offset.add(comp.position.clone().add(data.offset).scale(data.surfaceArea));
+            if (!fixed){
+                dataFull.inertia+= geometry.material.density*(data.inertia + data.surfaceArea*(d*d))
+            }
         }
-        dataFull.mass = dataFull.surfaceArea*geometry.material.density;
-        dataFull.offset.scale(1/dataFull.mass);
-
+        dataFull.offset.scale(1/dataFull.surfaceArea);
+        if (!fixed){
+            dataFull.mass = dataFull.surfaceArea*geometry.material.density;
+            dataFull.inv_mass = 1/dataFull.mass;
+            dataFull.inv_inertia = 1/dataFull.inertia;
+        }
+        else{
+            dataFull.mass = 0;
+            dataFull.inv_mass = 0;
+            dataFull.inertia = 0;
+            dataFull.inv_inertia = 0;
+        }
+        
         return dataFull;
     }
     Compiler.prototype.compilePolygonAttributes = function(polygon){
@@ -1163,11 +1204,26 @@ var physics = (function(){
         return data;
     }
     var compiler = new Compiler();
-
+    
+    
+    // helper functions
+    
     function loopRadian(radian){
         if (radian > 2*Math.PI) radian%=2*Math.PI;
         if (radian < 0) radian=2*Math.PI + (radian%(2*Math.PI));
         return radian;
+    }
+    function getTimeForDist(velocity, acceleration, distance, reverse = false){
+        // t= - v/a +- Math.sqrt((v/a)^2 + 2s/a)
+        var normal = distance.clone().normalize();
+        var s = distance.length();
+        var a = acceleration.dot(normal);
+        var v = velocity.dot(normal);
+        
+        var vta = v/a;
+        var t = -vta + Math.sqrt(vta*vta + 2*s/a)*(reverse?-1:1);
+        
+        return t;
     }
 
     // extended -------------------------------------------------------------------------------------------------

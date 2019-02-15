@@ -38,6 +38,7 @@ function setup()
     ]);
     var geo = new physics.Geometry();
     geo.addComponent(poly);
+    geo.compile(true);
 
     var obj = new physics.RigidBody();
     obj.geometry = geo;
@@ -60,6 +61,7 @@ function setup()
     ]);
     var geo = new physics.Geometry();
     geo.addComponent(poly);
+    geo.compile(true);
 
     var obj = new physics.RigidBody();
     obj.geometry = geo;
@@ -93,6 +95,7 @@ function setup()
 var Grabber = function(){
     this.obj = new physics.RigidBody();
     this.obj.geometry = new physics.Geometry();
+    this.obj.geometry.compile(true);
     this.constraint = new physics.Rope(this.obj, new physics.Vector(), this.obj, new physics.Vector(), 0);
     ins.add(this.constraint);
 }
