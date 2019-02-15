@@ -3,41 +3,34 @@ function setup()
 {
     ins = new physics.Scene()
 
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-20,y:-20},
     {x:-20,y:20},
     {x:20,y:20},
     {x:20,y:-20},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly.clone(), 0, 0);
-    geo.addComponent(poly.clone(), 30, 30);
     geo.compile();
+
     var obj = new physics.RigidBody()
     obj.geometry = geo;
     obj.setStartPosition(0,0,0);
-    obj.setStartVelocity(30,40,0);
+    obj.setStartVelocity(30,0,0);
     ins.add(obj);
 
-    var geo = new physics.Geometry();
-    geo.addComponent(poly.clone());
-    geo.compile();
     var obj = new physics.RigidBody()
     obj.geometry = geo;
-    obj.setStartPosition(0,100,0);
+    obj.setStartPosition(50,0,0);
     ins.add(obj);
 
     // floor;
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-800,y:-100},
     {x:800,y:-100},
     {x:800,y:100},
     {x:-800,y:100},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly);
     geo.compile(true);
 
     var obj = new physics.RigidBody();
@@ -52,15 +45,13 @@ function setup()
     ins.add(obj);
 
     // left wall
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-100,y:-800},
     {x:100,y:-800},
     {x:100,y:800},
     {x:-100,y:800},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly);
     geo.compile(true);
 
     var obj = new physics.RigidBody();
@@ -85,9 +76,10 @@ function setup()
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
 
-    g = new Grabber();
-    tracker.addListener("move", function(d){g.move(d)});
-    tracker.addListener("m1", function(d){g.grabAndDrop(d)});
+
+    //g = new Grabber();
+    //tracker.addListener("move", function(d){g.move(d)});
+    //tracker.addListener("m1", function(d){g.grabAndDrop(d)});
 
     window.requestAnimationFrame(mainloop);
 }
