@@ -159,8 +159,21 @@ var physics = (function(){
         for (var k1=0; k1<this.rigidBodies.length; k1++){
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                 if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                var collision = collisionTests.BodyBody(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp);
+                var collision = collisionTests.SAT(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp);
+                console.log("wasd");
+                console.log(collision);
                 if (collision){
+                      /*
+                      var collision2 = collisionTests.SAT(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp);
+                      console.log(collision2);
+                      if (collision2){
+                        var _f = collision2.offset.clone().subtract(collision.offset);
+                        var _p = collision2.point.clone().subtract(collision.point);
+                        var _n = collision2.normal.clone().subtract(collision.normal);
+                        console.log("offset:"+_f.x+","+_f.y+" point:"+_p.x+","+_p.y+" normal"+_n.x+","+_n.y);
+                    }*/
+
+
                     collision.correct();
                     collision.resolve();
                 }
@@ -291,34 +304,37 @@ var physics = (function(){
         this.borderColor    = false;
     }
 
-    var Line = function(pointA = new Vector(), pointB = new Vector()){
+    var Edge = function(pointA = new Vector(), pointB = new Vector()){
         this.pointA 	= pointA;
         this.pointB 	= pointB;
     }
-    Line.prototype.clone = function(){
-        return new Line(this.pointA.clone(), this.pointB.clone());
+    Edge.prototype.clone = function(){
+        return new Edge(this.pointA.clone(), this.pointB.clone());
     }
-    Line.prototype.rotate = function(angle){
+    Edge.prototype.normal = function(){
+        return this.pointB.clone().subtract(this.pointA).normalize().perp();
+    }
+    Edge.prototype.rotate = function(angle){
         this.pointA.rotate(angle);
         this.pointB.rotate(angle);
         return this;
     }
-    Line.prototype.add = function(position){
+    Edge.prototype.add = function(position){
         this.pointA.add(position);
         this.pointB.add(position);
 
         return this;
     }
-    Line.prototype.intersect = function(line){
+    Edge.prototype.intersect = function(edge){
         var coordinate = new Vector();
 
         var s1_x = this.pointB.x - this.pointA.x;
         var s1_y = this.pointB.y - this.pointA.y;
-        var s2_x = line.pointB.x - line.pointA.x;
-        var s2_y = line.pointB.y - line.pointA.y;
+        var s2_x = edge.pointB.x - edge.pointA.x;
+        var s2_y = edge.pointB.y - edge.pointA.y;
 
-        var xDiff = this.pointA.x - line.pointA.x;
-        var yDiff = this.pointA.y - line.pointA.y;
+        var xDiff = this.pointA.x - edge.pointA.x;
+        var yDiff = this.pointA.y - edge.pointA.y;
 
         var s = (s1_x*yDiff - s1_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
         var t = (s2_x*yDiff - s2_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
@@ -358,26 +374,26 @@ var physics = (function(){
         }
     }
     Polygon.prototype.iterateEdges = function*(){
-        var line = new Line();
-        line.pointA=false;
-        line.pointB=false;
+        var edge = new Edge();
+        edge.pointA=false;
+        edge.pointB=false;
         var startPoint=	false;
 
         for(var vertex of this.iterateVertices())
         {
-            if (line.pointB===false)
+            if (edge.pointB===false)
             {
                 startPoint = vertex;
-                line.pointB = vertex;
+                edge.pointB = vertex;
                 continue;
             }
-            line.pointA = line.pointB;
-            line.pointB = vertex;
-            yield line.clone();
+            edge.pointA = edge.pointB;
+            edge.pointB = vertex;
+            yield edge.clone();
         }
-        line.pointA = line.pointB;
-        line.pointB = startPoint;
-        yield line.clone();
+        edge.pointA = edge.pointB;
+        edge.pointB = startPoint;
+        yield edge.clone();
     }
     Polygon.prototype.moveOrigin = function(offset){
        for (vertex of this.vertices){
@@ -388,6 +404,28 @@ var physics = (function(){
        for (vertex of this.vertices){
            vertex.rotate(angle);
        }
+    }
+    Polygon.prototype.compile = function(){
+      var offset = new Vector();
+      var normal;
+      var dir;
+      for(var edge of this.iterateEdges()){
+          if (normal){
+            var n = normal.dot(edge.pointB);
+            if (n*dir > 1 || !dir ) dir=n;
+            else throw "Cannot compile non convex polygon";
+          }
+
+          offset.add(edge.pointA);
+          normal = edge.normal();
+      }
+      offset.scale(1/this.vertices.length).reverse();
+      this.moveOrigin(offset);
+
+      if(dir>0){ // makes nodes always go counter clockwise
+          this.vertices.reverse();
+      }
+
     }
 
     var Geometry = function(texture, material){
@@ -430,26 +468,26 @@ var physics = (function(){
 
     }
     Geometry.prototype.compile = function(fixed = false) {
-      var offset = new Vector();
+      Polygon.prototype.compile.call(this);
 
       this.surfaceArea = 0;
       this.mass = 0;
       this.inertia = 0;
 
       var k = 0;
-      for(var line of this.iterateEdges() ){
+      for(var edge of this.iterateEdges() ){
           k++;
           // relative coordinate !!!
-          var v = line.pointB.clone(
-          ).subtract(line.pointA);
+          var v = edge.pointB.clone(
+          ).subtract(edge.pointA);
 
           var b = v.length();
 
-          var a = line.pointA.clone(
+          var a = edge.pointA.clone(
           ).project(v
           ).length();
 
-          var h = line.pointA.clone(
+          var h = edge.pointA.clone(
           ).project(v.perp()
           ).length();
 
@@ -457,17 +495,15 @@ var physics = (function(){
           var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
 
           var center = new Vector();
-          center.x = ( line.pointA.x + line.pointB.x ) / 3;
-          center.y = ( line.pointA.y + line.pointB.y ) / 3;
+          center.x = ( edge.pointA.x + edge.pointB.x ) / 3;
+          center.y = ( edge.pointA.y + edge.pointB.y ) / 3;
 
           var d = center.length();
 
           this.inertia		+= surfaceArea * (d*d) + inertia;
           this.surfaceArea	+= surfaceArea;
-          offset.add(line.pointA);
       }
-      offset.scale(1/k).reverse();
-      this.moveOrigin(offset);
+
 
       this.mass = this.surfaceArea*this.material.density;
       this.inertia*=this.material.density;
@@ -920,11 +956,11 @@ var physics = (function(){
         var collision = new Collision();
         // test collision
         main:
-        for(var lineA of polygonA.iterateEdges()){
-            lineA.rotate(angleA).add(positionA);
-            for(var lineB of polygonB.iterateEdges()){
-                lineB.rotate(angleB).add(positionB);
-                var coordinate = lineA.intersect(lineB);
+        for(var edgeA of polygonA.iterateEdges()){
+            edgeA.rotate(angleA).add(positionA);
+            for(var edgeB of polygonB.iterateEdges()){
+                edgeB.rotate(angleB).add(positionB);
+                var coordinate = edgeA.intersect(edgeB);
                 if (!coordinate) continue;
                 if (!pointA)pointA = coordinate
                 else {
@@ -992,7 +1028,7 @@ var physics = (function(){
     }
     CollisionTests.prototype.polyProjectToNormal = function(polygon, position, angle, normal, center){
 
-        var OffsetList = [];
+        var offsets = [];
 
         for(var vertex of polygon.iterateVertices()){
             vertex.rotate(angle
@@ -1000,28 +1036,93 @@ var physics = (function(){
             ).subtract(center)
 
             vertex.translate(normal)
-
-            OffsetList.push(vertex);
+            offsets.push(vertex);
         }
 
-        OffsetList.sort(function(a,b){return a.x - b.x});
+        offsets.sort(function(a,b){return a.x - b.x});
 
-        return OffsetList;
+        return offsets;
     }
     CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate){
         return this.pointInPoly(geometry, position, angle, coordinate);
     }
     CollisionTests.prototype.pointInPoly = function(polygon, position, angle, coordinate){
-        var lineA = new Line();
-        lineA.pointA = coordinate.clone();
-        lineA.pointB = position.clone();
+        var edgeA = new Edge();
+        edgeA.pointA = coordinate.clone();
+        edgeA.pointB = position.clone();
 
-        for(var lineB of polygon.iterateEdges())
+        for(var edgeB of polygon.iterateEdges())
         {
-            lineB.rotate(angle).add(position);
-            if (lineA.intersect(lineB)) return false;
+            edgeB.rotate(angle).add(position);
+            if (edgeA.intersect(edgeB)) return false;
         }
         return true
+    }
+    CollisionTests.prototype.getClosestSupportingPoint = function(polygonA, polygonB, positionA, positionB, angleA, angleB){
+      var data = {};
+      for(var edge of polygonA.iterateEdges()){
+          edge.rotate(angleA
+          ).add(positionA);
+          var normal = edge.normal();
+          var d={};
+          for(var vertex of polygonB.iterateVertices()){
+              var v = vertex.rotate(angleB
+              ).add(positionB);
+              var distance = v.clone().subtract(edge.pointA
+              ).dot(normal); // not sure if normal is correct
+
+              if (d.distance==undefined || d.distance > distance)
+              {
+                  d.normal = normal;
+                  d.v = v;
+                  d.distance = distance;
+              }
+          }
+          if (data.distance==undefined || data.distance < d.distance){
+              data = d;
+          }
+      }
+      return data;
+    }
+    CollisionTests.prototype.SAT = function(bodyA, bodyB, timeStamp)
+    {
+        var positionA = bodyA.getPosition(timeStamp);
+        var positionB = bodyB.getPosition(timeStamp);
+        var angleA = bodyA.getAngle(timeStamp);
+        var angleB = bodyB.getAngle(timeStamp);
+
+        var dA = this.getClosestSupportingPoint(bodyA.geometry, bodyB.geometry, positionA, positionB, angleA, angleB);
+        var dB = this.getClosestSupportingPoint(bodyB.geometry, bodyA.geometry, positionB, positionA, angleB, angleA);
+
+        if (dA.distance>0 && dB.distance>0){
+            // no collision
+            return false;
+        }
+
+        var collision = new Collision();
+        collision.timeStamp = timeStamp;
+
+        if(dA.distance<0){
+            if (dB.distance>0 || dA.distance < dB.distance)
+            {
+                collision.bodyA = bodyA;
+                collision.bodyB = bodyB;
+                collision.normal = dA.normal;
+                collision.point = dA.v;
+                collision.offset = dA.normal.clone().scale(dA.distance);
+                return collision;
+            }
+        }
+        if (dB.distance<0){
+          collision.bodyA = bodyB;
+          collision.bodyB = bodyA;
+          collision.normal = dB.normal;
+          collision.point = dB.v;
+          collision.offset = dB.normal.clone().scale(dB.distance);
+          return collision;
+
+        }
+
     }
     var collisionTests = new CollisionTests();
 
