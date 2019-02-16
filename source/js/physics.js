@@ -963,98 +963,6 @@ var physics = (function(){
     }
 
     var CollisionTests = function(){};
-    CollisionTests.prototype.BodyBody = function(bodyA, bodyB, timeStamp){
-        var collision = this.polyPoly(
-          bodyA.geometry,
-          bodyA.getPosition(timeStamp),
-          bodyA.getAngle(timeStamp),
-          bodyB.geometry,
-          bodyB.getPosition(timeStamp),
-          bodyB.getAngle(timeStamp),
-        );
-
-        collision.timeStamp = timeStamp;
-        collision.bodyA = bodyA;
-        collision.bodyB = bodyB;
-
-        return collision;
-    }
-    CollisionTests.prototype.polyPoly = function(polygonA, positionA, angleA, polygonB, positionB, angleB){
-        var pointA = false;
-        var pointB = false;
-        var collision = new Collision();
-        // test collision
-        main:
-        for(var edgeA of polygonA.iterateEdges()){
-            edgeA.rotate(angleA).add(positionA);
-            for(var edgeB of polygonB.iterateEdges()){
-                edgeB.rotate(angleB).add(positionB);
-                var coordinate = edgeA.intersect(edgeB);
-                if (!coordinate) continue;
-                if (!pointA)pointA = coordinate
-                else {
-                    pointB = coordinate;
-                    break main;
-                }
-            }
-        }
-
-        if (!pointA || !pointB) return false;
-
-        // compile normal
-        collision.normal = pointB.clone(
-        ).subtract(pointA
-        ).normalize(
-        ).perp();
-
-        if (positionA.clone(
-        ).subtract(pointA
-        ).dot(collision.normal
-        )<0){
-            collision.normal.reverse();
-        }
-
-        // run SAT
-        var vert1 = this.polyProjectToNormal(
-        polygonA,
-        positionA,
-        angleA,
-        collision.normal,
-        pointA);
-        var vert2 = this.polyProjectToNormal(
-        polygonB,
-        positionB,
-        angleB,
-        collision.normal,
-        pointA);
-
-        // compute offset
-        collision.offset = new Vector();
-        if (vert1[0].x<0){
-            collision.offset.subtract(collision.normal.clone().scale(vert1[0].x));
-        }
-        if (vert2[vert2.length-1].x>0){
-            collision.offset.add(collision.normal.clone().scale(vert2[vert2.length-1].x));
-        }
-
-        // compute collisionPoint
-        collision.point = new Vector();
-        var totalOffset = 0;
-        for (var k=0;vert1[k].x<0;k++){
-            totalOffset-=vert1[k].x
-            collision.point.add(vert1[k].clone().scale(-vert1[k].x));
-        }
-        for (var k=vert2.length-1;vert2[k].x>0;k--){
-            totalOffset+=vert2[k].x
-            collision.point.add(vert2[k].clone().scale(vert2[k].x));
-        }
-        collision.point.scale(1/totalOffset);
-
-        collision.point.translateRev(collision.normal);
-        collision.point.add(pointA);
-
-        return collision;
-    }
     CollisionTests.prototype.polyProjectToNormal = function(polygon, position, angle, normal, center){
 
         var offsets = [];
@@ -1113,8 +1021,7 @@ var physics = (function(){
       }
       return data;
     }
-    CollisionTests.prototype.SAT = function(bodyA, bodyB, timeStamp)
-    {
+    CollisionTests.prototype.SAT = function(bodyA, bodyB, timeStamp){
         var positionA = bodyA.getPosition(timeStamp);
         var positionB = bodyB.getPosition(timeStamp);
         var angleA = bodyA.getAngle(timeStamp);
