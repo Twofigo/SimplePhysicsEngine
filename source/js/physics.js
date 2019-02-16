@@ -160,20 +160,7 @@ var physics = (function(){
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                 if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
                 var collision = collisionTests.SAT(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp);
-                console.log("wasd");
-                console.log(collision);
                 if (collision){
-                      /*
-                      var collision2 = collisionTests.SAT(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp);
-                      console.log(collision2);
-                      if (collision2){
-                        var _f = collision2.offset.clone().subtract(collision.offset);
-                        var _p = collision2.point.clone().subtract(collision.point);
-                        var _n = collision2.normal.clone().subtract(collision.normal);
-                        console.log("offset:"+_f.x+","+_f.y+" point:"+_p.x+","+_p.y+" normal"+_n.x+","+_n.y);
-                    }*/
-
-
                     collision.correct();
                     collision.resolve();
                 }
@@ -518,20 +505,21 @@ var physics = (function(){
 
     }
 
-    var RigidBody = function(geometry = false){
-        this.geometry   = geometry;
+    var RigidBody = function(id=""){
+        this.id = id;
+        this.geometry;
         this.changeCue    = [];
 
-            var snapshot = {
-            timeStamp: 0,
-            position: new Vector(),
-            velocity: new Vector(),
-            acceleration: new Vector(),
-            angle: 0,
-            angVelocity: 0,
-            angAcceleration: 0
-            }
-            this.changeCue.push(snapshot);
+        var snapshot = {
+        timeStamp: 0,
+        position: new Vector(),
+        velocity: new Vector(),
+        acceleration: new Vector(),
+        angle: 0,
+        angVelocity: 0,
+        angAcceleration: 0
+        }
+        this.changeCue.push(snapshot);"left"
     }
     RigidBody.prototype.setTimeStamp = function(timeStamp){
         this.timeStamp = timeStamp;
@@ -963,23 +951,6 @@ var physics = (function(){
     }
 
     var CollisionTests = function(){};
-    CollisionTests.prototype.polyProjectToNormal = function(polygon, position, angle, normal, center){
-
-        var offsets = [];
-
-        for(var vertex of polygon.iterateVertices()){
-            vertex.rotate(angle
-            ).add(position
-            ).subtract(center)
-
-            vertex.translate(normal)
-            offsets.push(vertex);
-        }
-
-        offsets.sort(function(a,b){return a.x - b.x});
-
-        return offsets;
-    }
     CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate){
         return this.pointInPoly(geometry, position, angle, coordinate);
     }
@@ -997,14 +968,14 @@ var physics = (function(){
     }
     CollisionTests.prototype.getClosestSupportingPoint = function(polygonA, polygonB, positionA, positionB, angleA, angleB){
       var data = {};
-      for(var edge of polygonA.iterateEdges()){
-          edge.rotate(angleA
-          ).add(positionA);
+      for(var edge of polygonB.iterateEdges()){
+          edge.rotate(angleB
+          ).add(positionB);
           var normal = edge.normal();
           var d={};
-          for(var vertex of polygonB.iterateVertices()){
-              var v = vertex.rotate(angleB
-              ).add(positionB);
+          for(var vertex of polygonA.iterateVertices()){
+              var v = vertex.rotate(angleA
+              ).add(positionA);
               var distance = v.clone().subtract(edge.pointA
               ).dot(normal); // not sure if normal is correct
 
@@ -1030,7 +1001,7 @@ var physics = (function(){
         var dA = this.getClosestSupportingPoint(bodyA.geometry, bodyB.geometry, positionA, positionB, angleA, angleB);
         var dB = this.getClosestSupportingPoint(bodyB.geometry, bodyA.geometry, positionB, positionA, angleB, angleA);
 
-        if (dA.distance>0 && dB.distance>0){
+        if (dA.distance>0 || dB.distance>0){
             // no collision
             return false;
         }
@@ -1038,27 +1009,22 @@ var physics = (function(){
         var collision = new Collision();
         collision.timeStamp = timeStamp;
 
-        if(dA.distance<0){
-            if (dB.distance>0 || dA.distance < dB.distance)
-            {
-                collision.bodyA = bodyA;
-                collision.bodyB = bodyB;
-                collision.normal = dA.normal;
-                collision.point = dA.v;
-                collision.offset = dA.normal.clone().scale(dA.distance);
-                return collision;
-            }
-        }
-        if (dB.distance<0){
-          collision.bodyA = bodyB;
-          collision.bodyB = bodyA;
-          collision.normal = dB.normal;
-          collision.point = dB.v;
-          collision.offset = dB.normal.clone().scale(dB.distance);
-          return collision;
-
+        if (dA.distance > dB.distance)
+        {
+            collision.bodyA = bodyA;
+            collision.bodyB = bodyB;
+            collision.normal = dA.normal;
+            collision.point = dA.v;
+            collision.offset = dA.normal.clone().scale(-dA.distance);
+            return collision;
         }
 
+        collision.bodyA = bodyB;
+        collision.bodyB = bodyA;
+        collision.normal = dB.normal;
+        collision.point = dB.v;
+        collision.offset = dB.normal.clone().scale(-dB.distance);
+        return collision;
     }
     var collisionTests = new CollisionTests();
 

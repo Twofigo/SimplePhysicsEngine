@@ -12,15 +12,15 @@ function setup()
     ]);
     geo.compile();
 
-    var obj = new physics.RigidBody()
+    var obj = new physics.RigidBody("poppy")
     obj.geometry = geo;
-    obj.setStartPosition(0,0,0);
-    obj.setStartVelocity(30,0,0);
+    obj.setStartPosition(0,0,1);
+    obj.setStartVelocity(70,0,0);
     ins.add(obj);
 
-    var obj = new physics.RigidBody()
+    var obj = new physics.RigidBody("Jeff")
     obj.geometry = geo;
-    obj.setStartPosition(50,0,0);
+    obj.setStartPosition(100,0,0);
     ins.add(obj);
 
     // floor;
@@ -33,13 +33,13 @@ function setup()
     ]);
     geo.compile(true);
 
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("floor");
     obj.geometry = geo;
     obj.setStartPosition(0,400);
     ins.add(obj);
 
     // roof
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("roof");
     obj.geometry = geo;
     obj.setStartPosition(0,-400);
     ins.add(obj);
@@ -54,13 +54,13 @@ function setup()
     ]);
     geo.compile(true);
 
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("left");
     obj.geometry = geo;
     obj.setStartPosition(-500,0);
     ins.add(obj);
 
     // right wall
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("right");
     obj.geometry = geo;
     obj.setStartPosition(500,0);
     ins.add(obj);
