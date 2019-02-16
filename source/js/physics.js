@@ -505,21 +505,22 @@ var physics = (function(){
 
     }
 
+    var Snapshot = function(){
+      this.timeStamp = 0;
+      this.position = new Vector();
+      this.velocity = new Vector();
+      this.acceleration = new Vector();
+      this.angle = 0;
+      this.angVelocity = 0;
+      this.angAcceleration = 0;
+    }
+
     var RigidBody = function(id=""){
         this.id = id;
         this.geometry;
         this.changeCue    = [];
 
-        var snapshot = {
-        timeStamp: 0,
-        position: new Vector(),
-        velocity: new Vector(),
-        acceleration: new Vector(),
-        angle: 0,
-        angVelocity: 0,
-        angAcceleration: 0
-        }
-        this.changeCue.push(snapshot);"left"
+        this.changeCue.push(new Snapshot);"left"
     }
     RigidBody.prototype.setTimeStamp = function(timeStamp){
         this.timeStamp = timeStamp;
@@ -671,16 +672,15 @@ var physics = (function(){
         }
 
         if (this.changeCue[this.changeCue.length-1].timeStamp != timeStamp){
-            var snapshot = {
-                timeStamp: timeStamp,
-                position: this.getPosition(timeStamp),
-                velocity: this.getVelocity(timeStamp),
-                acceleration: this.getAcceleration(timeStamp),
-                angle: this.getAngle(timeStamp),
-                angVelocity: this.getAngVelocity(timeStamp),
-                angAcceleration: this.getAngAcceleration(timeStamp)
-            }
-            this.changeCue.push(snapshot);
+            var s = new Snapshot();
+            s.timeStamp = timeStamp;
+            s.position = this.getPosition(timeStamp);
+            s.velocity = this.getVelocity(timeStamp);
+            s.acceleration = this.getAcceleration(timeStamp);
+            s.angle = this.getAngle(timeStamp);
+            s.angVelocity = this.getAngVelocity(timeStamp);
+            s.angAcceleration = this.getAngAcceleration(timeStamp);
+            this.changeCue.push(s);
         }
     }
     RigidBody.prototype.setPosition = function(position, timeStamp){
