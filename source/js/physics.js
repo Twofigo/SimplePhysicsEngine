@@ -643,14 +643,12 @@ var physics = (function(){
         return inv_mass;
     }
 
-    RigidBody.prototype.getTimeForDist1 = function(normal, distance, timeStamp){
-      var v = this.getVelocity(timeStamp).dot(normal);
-      var a = this.getAcceleration(timeStamp).dot(normal);
-      return getTimeForDist(distance, v, a)
-    }
-    RigidBody.prototype.getTimeForDist2 = function(normal, distance, coordinate, timeStamp){
+    RigidBody.prototype.getLinearValuesInPlane = function(normal, coordinate, timeStamp){
       // not taking anuglar acceleration into account
       // only works for small distances
+      var d = {};
+
+      d.velocity = this.getVelocityInPoint(coordinate, timeStamp).dot(normal);
 
       var radian = coordinate.clone(
       ).subtract(this.getPosition(timeStamp));
@@ -659,12 +657,8 @@ var physics = (function(){
       var a = radian.clone(
       ).perp(
       ).scale(2/(t*t));
-
-      v += this.getVelocityInPoint(point, timeStamp).dot(normal);
-      a += this.getAcceleration(timeStamp).dot(normal);
-
-      return getTimeForDist(distance, v, a);
-
+      d.acceleration = a.add(this.getAcceleration(timeStamp)).dot(normal);
+      return d
     }
 
     RigidBody.prototype.createSnapshot = function(timeStamp){
@@ -1015,7 +1009,7 @@ var physics = (function(){
 
         if (dA.distance > dB.distance)
         {
-            collision.bodyA = bodyA;2
+            collision.bodyA = bodyA;
             collision.bodyB = bodyB;
             collision.normal = dA.normal;
             collision.point = dA.v;
@@ -1041,13 +1035,45 @@ var physics = (function(){
 
         return t;
     }
+    CollisionTests.prototype.getCollition = function(bodyA, bodyB, timeStamp){
+        var localTimeStamp = timeStamp;
+
+        var collision;
+        var time;
+        do{
+          collision = this.SAT(bodyA, bodyB, localTimeStamp)
+          if(collision.offset.dot(collision.normal)>0) break;
+
+          var distance = collision.offset.length();
+          if (distance > (bodyA.geometry.radious+bodyB.geometry.radious)/2){
+              var v = bodyA.getVelocity(localTimeStamp).subtract(bodyB.getVelocity(localTimeStamp)).dot(collision.normal);
+              var a = bodyA.getAcceleration(localTimeStamp).subtract(bodyB.getAcceleration(localTimeStamp)).dot(collision.normal);
+              time = getTimeForDist(distance, v, a)
+          }
+          else{
+              var d1 = collision.bodyA.getLinearValuesInPlane(collision.normal, collision.point, timeStamp);
+              var d2 = collision.bodyB.getLinearValuesInPlane(collision.normal, collision.point.clone().add(collision.offset), timeStamp);
+              var v = d1.velocity - d2.velocity;
+              var a = d1.acceleration - d2.acceleration;
+
+              time = getTimeForDist(distance, v, a)
+          }
+
+          if (time){
+              localTimeStamp+=time;
+          }
+        }
+        while(collision.offset.length() > 5);
+
+        return collision;
+    }
 
     var collisionTests = new CollisionTests();
 
 
     // helper functions
 
-    function getTimeForDist(distance=0, velocity=0, acceleration=0){
+    function getTimeForDist(distance=0, velocity=0, acceleration=0){ // make it handle negative d
         var v = velocity;
         var a = acceleration;
         var d = distance;
