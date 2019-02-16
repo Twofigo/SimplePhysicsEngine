@@ -81,7 +81,7 @@ function setup()
     //tracker.addListener("move", function(d){g.move(d)});
     //tracker.addListener("m1", function(d){g.grabAndDrop(d)});
 
-    window.requestAnimationFrame(mainloop);
+    ins.start();
 }
 
 var Grabber = function(){
@@ -111,11 +111,4 @@ Grabber.prototype.move = function(data){
     this.obj.setTimeStamp(data.timeStamp);
     this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timeStamp);
     this.obj.setPosition(cordinate, data.timeStamp);
-}
-
-function mainloop(timeStamp){
-	ins.update(timeStamp);
-	ins.draw(timeStamp);
-
-	window.requestAnimationFrame(mainloop);
 }
