@@ -648,6 +648,35 @@ var physics = (function(){
         return inv_mass;
     }
 
+    RigidBody.prototype.getTimeForDist1 = function(normal, distance, timeStamp){
+        var v = this.getVelocity(timeStamp).dot(normal);
+        var a = this.getAcceleration(timeStamp).dot(normal);
+        var vd2 = v/2;
+        var t = Math.sqrt(dvt*dvt + distance)-dvt;
+
+        return t;
+    }
+    RigidBody.prototype.getTimeForDist2 = function(normal, distance, coordinate, timeStamp){
+      // not taking anuglar acceleration into account
+      // only works for small distances
+
+      var radian = coordinate.clone(
+      ).subtract(this.getPosition(timeStamp));
+
+      var t = (0.5*Math.PI)/this.getAngVelocity(timeStamp)
+      var a = radian.clone(
+      ).perp(
+      ).scale(2/(t*t));
+
+      v += this.getVelocityInPoint(point, timeStamp).dot(normal);
+      a += this.getAcceleration(timeStamp).dot(normal);
+      var vd2 = v/2;
+      var t = Math.sqrt(dvt*dvt + distance)-dvt;
+
+      return t;
+
+    }
+
     RigidBody.prototype.createSnapshot = function(timeStamp){
         while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
             this.changeCue.splice(-1,1);
