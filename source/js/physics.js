@@ -147,36 +147,29 @@ var physics = (function(){
         this.timeStamp+=10
         timeStamp = this.timeStamp;
 
+        var loopCondition;
+        do{
+            loopCondition = false;
+            for (var k1=0; k1<this.rigidBodies.length; k1++){
+                for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
+                    if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
+                    if (this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp)) continue;
 
-        var timeMin = 1000;
-        var timeMax = 3000;
-        for (var k1=0; k1<this.rigidBodies.length; k1++){
-            for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
-                if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                var t;
-                var note = this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp);
-                if (note){
-                    t = note.timeStamp;
-                    if (t-timeStamp > 500) continue; // lower limit
-                }
-                else{
-                    t = timeStamp;
-                }
+                    loopCondition = true;
+                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp, timeStamp+3000); // upper limit
+                    if (collision){
+                        this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
+                        this.clearCollisionNotes(collision.bodyA, collision.timeStamp);
+                        this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
 
-                var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+1000); // upper limit
-
-                if (collision){
-                    this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
-                    this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
-                    this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
-
-                    collision.correct();
-                }
-                else{
-                    this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+1000)
+                        collision.resolve();
+                    }
+                    else{
+                        this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
+                    }
                 }
             }
-        }
+        }while(loopCondition)
     }
     Scene.prototype.draw = function(timeStamp){
 
@@ -916,12 +909,12 @@ var physics = (function(){
     }
 
     var Collision = function Collision(){
-        this.bodyA				= false;
-        this.bodyB				= false;
-        this.normal				= false;
-        this.point				= false;
-        this.offset			  = false;
-        this.timeStamp    = false;
+        this.bodyA;
+        this.bodyB;
+        this.normal;
+        this.point;
+        this.offset;
+        this.timeStamp;
     }
     Collision.prototype.correct = function(){
       if (!this.offset) return false;
@@ -940,7 +933,7 @@ var physics = (function(){
         // relativeV
         var velocityA = this.bodyA.getVelocityInPoint(this.point, this.timeStamp);
         var velocityB = this.bodyB.getVelocityInPoint(this.point, this.timeStamp);
-        var relativeV = velocityA.clone().subtract(velocityB);
+        var relativeV = velocityB.clone().subtract(velocityA);
         if (relativeV.dot(this.normal)>0) return;
         // inv_mass
         var invMssA = this.bodyA.getInvMassInPoint(this.point, this.normal, this.timeStamp);
@@ -952,12 +945,12 @@ var physics = (function(){
         var j = -(1+e)*relativeV.dot(this.normal)/totalMass
         var impulse = this.normal.clone(
         ).scale(j);
-        this.bodyA.applyImpulse(this.point, impulse, this.timeStamp);
-        this.bodyB.applyImpulse(this.point, impulse.reverse(), this.timeStamp);
+        this.bodyB.applyImpulse(this.point, impulse, this.timeStamp);
+        this.bodyA.applyImpulse(this.point, impulse.reverse(), this.timeStamp);
         //friction
         var tangent = relativeV.clone().project(this.normal.clone().perp()).normalize();
-        var relativeV = this.bodyA.getVelocityInPoint(this.point, this.timeStamp
-        ).subtract(this.bodyB.getVelocityInPoint(this.point, this.timeStamp));
+        var relativeV = this.bodyB.getVelocityInPoint(this.point, this.timeStamp
+        ).subtract(this.bodyA.getVelocityInPoint(this.point, this.timeStamp));
         var mu = Math.sqrt(
         this.bodyA.geometry.material.staticFriction*this.bodyA.geometry.material.staticFriction +
         this.bodyB.geometry.material.staticFriction*this.bodyB.geometry.material.staticFriction
@@ -977,8 +970,8 @@ var physics = (function(){
             this.bodyB.geometry.material.dynamicFriction*this.bodyB.geometry.material.dynamicFriction
             ));
         }
-        this.bodyA.applyImpulse(this.point, frictionImpulse, this.timeStamp);
-        this.bodyB.applyImpulse(this.point, frictionImpulse.reverse(), this.timeStamp);
+        this.bodyB.applyImpulse(this.point, frictionImpulse, this.timeStamp);
+        this.bodyA.applyImpulse(this.point, frictionImpulse.reverse(), this.timeStamp);
     }
 
     var CollisionTests = function(){};
@@ -997,32 +990,31 @@ var physics = (function(){
         return true
     }
     CollisionTests.prototype.getClosestSupportingPoint = function(polygonA, polygonB, positionA, positionB, angleA, angleB){
-      var data = {};
-      for(var edge of polygonB.iterateEdges()){
-          edge.rotate(angleB
-          ).add(positionB);
-          var normal = edge.normal();
-          var d={};
-          for(var vertex of polygonA.iterateVertices()){
-              var v = vertex.rotate(angleA
-              ).add(positionA);
-              var distance = v.clone().subtract(edge.pointA
-              ).dot(normal); // not sure if normal is correct
-              if (d.distance==undefined || d.distance > distance)
-              {
-                  d.normal = normal;
-                  d.v = v;
-                  d.distance = distance;
-              }
-          }
-          if (data.distance==undefined || data.distance < d.distance){
-              data = d;
-          }
-      }
-      return data;
+        var data = {};
+        for(var edge of polygonB.iterateEdges()){
+            edge.rotate(angleB
+            ).add(positionB);
+            var normal = edge.normal();
+            var d={};
+            for(var vertex of polygonA.iterateVertices()){
+                var v = vertex.rotate(angleA
+                ).add(positionA);
+                var distance = v.clone().subtract(edge.pointA
+                ).dot(normal); // not sure if normal is correct
+                if (d.distance==undefined || d.distance > distance)
+                {
+                    d.normal = normal;
+                    d.v = v;
+                    d.distance = distance;
+                }
+            }
+            if (data.distance==undefined || data.distance < d.distance){
+                data = d;
+            }
+        }
+        return data;
     }
     CollisionTests.prototype.SAT = function(bodyA, bodyB, timeStamp){
-
         var positionA = bodyA.getPosition(timeStamp);
         var positionB = bodyB.getPosition(timeStamp);
         var angleA = bodyA.getAngle(timeStamp);
@@ -1031,6 +1023,7 @@ var physics = (function(){
         var dB = this.getClosestSupportingPoint(bodyB.geometry, bodyA.geometry, positionB, positionA, angleB, angleA);
         var collision = new Collision();
         collision.timeStamp = timeStamp;
+
         // geometry overlaps if distance is possitive
         if (dA.distance > dB.distance)
         {
@@ -1048,16 +1041,6 @@ var physics = (function(){
         collision.offset = dB.normal.clone().scale(dB.distance);
         return collision;
     }
-    CollisionTests.prototype.getEarilestCollitionTime = function(bodyA, bodyB, timeStamp){
-
-        var distance = bodyA.getPosition(timeStamp).subtract(bodyB.getPosition(timeStamp));
-        var normal = distance.clone().normalize();
-        distance = distance.length() - (bodyA.geometry.radious+bodyB.geometry.radious);
-        var relV = bodyA.getVelocity(timeStamp).subtract(bodyB.getVelocity(timeStamp)).dot(normal);
-        var relA = bodyA.getAcceleration(timeStamp).subtract(bodyB.getAcceleration(timeStamp)).dot(normal);
-        var t = getTimeForDist(distance, relV, relA) + timeStamp;
-        return t;
-    }
     CollisionTests.prototype.getCollition = function(bodyA, bodyB, timeStamp, max){
         var localTimeStamp = timeStamp;
         var collision;
@@ -1066,13 +1049,11 @@ var physics = (function(){
         var snapshot;
         var timespan;
         var k = 0;
-        while(k++<5){
+        while(k++<50){
             collision = this.SAT(bodyA, bodyB, localTimeStamp)
             if (!collision) return false;
             distance = collision.offset.dot(collision.normal);
             if (Math.abs(distance) < 0.1) break;
-
-            timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
 
             if (distance > (collision.bodyA.geometry.radious+collision.bodyB.geometry.radious)/2){
                 var v = collision.bodyA.getVelocity(localTimeStamp).subtract(collision.bodyB.getVelocity(localTimeStamp)).dot(collision.normal);
@@ -1088,14 +1069,14 @@ var physics = (function(){
             }
             if(!time) return false;
 
+            timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
             if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
             else localTimeStamp = timespan;
 
             if (localTimeStamp > max) return false;
             if (localTimeStamp < timeStamp) return false;
-
         }
-        if (Math.abs(distance) > 0.1) return false;
+        if (Math.abs(distance) > 0.1) throw "infinate loop conditions";
         return collision;
     }
 
