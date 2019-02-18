@@ -93,6 +93,7 @@ var physics = (function(){
     Vector.prototype.cross = function(vector){
         return this.x * vector.y - this.y * vector.x;
     }
+
     var Scene = function(){
         this.canvas			= false;
         this.ctx			= false;
@@ -101,8 +102,11 @@ var physics = (function(){
         this.position           = new Vector();
         this.zoom               = false;
         this.gravity = new Vector();
+
         this.rigidBodies	= [];
         this.constraints = [];
+
+        this.collisionNotes = [];
     }
     Scene.prototype.setup = function(canvas){
         if (!this.canvas) this.canvas = canvas;
@@ -143,31 +147,33 @@ var physics = (function(){
         this.timeStamp+=10
         timeStamp = this.timeStamp;
 
+
+        var timeMin = 1000;
+        var timeMax = 3000;
         for (var k1=0; k1<this.rigidBodies.length; k1++){
             for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                 if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                t++;
-                if ((t-timeStamp)>500) continue;
-                var tMax;
-                var t = Math.min(this.rigidBodies[k1].getLatestSnapshotTime(), this.rigidBodies[k2].getLatestSnapshotTime(), timeStamp);
-                var t1 = this.rigidBodies[k1].getNextSnapshotTime(t);
-                var t2 = this.rigidBodies[k2].getNextSnapshotTime(t);
-                if (!t1){
-                    if (t2){
-                        tMax = t2;
-                    }
-                    tMax = t+1000;
-                }
-                else if (!t2){
-                    tMax = t1;
+                var t;
+                var note = this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp);
+                if (note){
+                    t = note.timeStamp;
+                    if (t-timeStamp > 500) continue; // lower limit
                 }
                 else{
-                    tMax = Math.min(this.rigidBodies[k1].getNextSnapshotTime(t), this.rigidBodies[k2].getNextSnapshotTime(t));
+                    t = timeStamp;
                 }
-                var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, tMax);
+
+                var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+1000); // upper limit
+
                 if (collision){
+                    this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
+                    this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
+                    this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
+
                     collision.correct();
-                    collision.resolve();
+                }
+                else{
+                    this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+1000)
                 }
             }
         }
@@ -218,6 +224,50 @@ var physics = (function(){
     }
     Scene.prototype.move = function(x, y){
         this.move(new Vector(x, y));
+    }
+    Scene.prototype.addCollisionNote = function(bodyA, bodyB, timeStamp){
+        this.clearCollisionNotes(bodyA, bodyB);
+        var note = {}
+        note.bodyA = bodyA;
+        note.bodyB = bodyB;
+        note.timeStamp = timeStamp;
+        this.collisionNotes.push(note);
+        this.collisionNotes.sort(function(a, b) {return b.timeStamp - a.timeStamp;});
+    }
+    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){
+        for(var k=this.collisionNotes.length; k>0; k--){
+            if (n.timeStamp < timeStamp) continue;
+            if (n.bodyA == bodyA || n.bodyB == bodyA){
+                if (n.bodyA == bodyB || n.bodyB == bodyB){
+                    return n;
+                }
+            }
+        }
+        return false;
+    }
+    Scene.prototype.clearCollisionNotes = function(body, timeStamp = false){
+        for(var k=this.collisionNotes.length; k>0; k--){
+            if (timeStamp && n.timeStamp < timeStamp) continue;
+            if (n.bodyA == body || n.bodyB == body){
+                this.collisionNotes.splice(k, 1);
+            }
+        }
+    }
+    Scene.prototype.clearCollisionNotes = function(bodyA, bodyB, timeStamp = false){
+        for(var k=this.collisionNotes.length; k>0; k--){
+            if (timeStamp && n.timeStamp < timeStamp) continue;
+            if (n.bodyA == bodyA || n.bodyB == bodyA){
+                if (n.bodyA == bodyB || n.bodyB == bodyB){
+                    this.collisionNotes.splice(k, 1);
+                }
+            }
+        }
+    }
+    Scene.prototype.purgeOldCollisionNotes = function(timeStamp){
+      for(var k=0; k<this.collisionNotes.length; k--){
+          if (n.timeStamp > timeStamp) continue;
+          this.collisionNotes.splice(k, 1);
+      }
     }
     Scene.prototype.coordinateConvert = function(coordinate){
         return coordinate.clone().subtract({x:this.canvas.width*0.5, y:this.canvas.height*0.5}
@@ -272,12 +322,14 @@ var physics = (function(){
         this.ctx.fillRect(position.x-size, position.y-size, 2*size*this.zoom, 2*size*this.zoom);
         this.ctx.fill();
     }
+
     var Material = function(){
         this.density			= false;
         this.staticFriction		= false;
         this.dynamicFriction	= false;
         this.restitution		= false;
     }
+
     var Texture = function(){
         this.texture		= false;
         this.textureSize	= false;
@@ -285,6 +337,7 @@ var physics = (function(){
         this.borderWidth    = 0;
         this.borderColor    = false;
     }
+
     var Edge = function(pointA = new Vector(), pointB = new Vector()){
         this.pointA 	= pointA;
         this.pointB 	= pointB;
@@ -323,6 +376,7 @@ var physics = (function(){
         }
         return false; // No collision
     }
+
     var Polygon = function(vertices = []){
         this.vertices	= vertices;
     }
@@ -397,6 +451,7 @@ var physics = (function(){
           this.vertices.reverse();
       }
     }
+
     var Geometry = function(){
         this.texture;
         this.material;
@@ -471,6 +526,7 @@ var physics = (function(){
           this.inv_inertia = 0;
       }
     }
+
     var Snapshot = function(){
       this.timeStamp = 0;
       this.position = new Vector();
@@ -480,6 +536,7 @@ var physics = (function(){
       this.angVelocity = 0;
       this.angAcceleration = 0;
     }
+
     var RigidBody = function(id=""){
         this.id = id;
         this.geometry;
@@ -529,7 +586,6 @@ var physics = (function(){
     RigidBody.prototype.purgeSnapshot = function(timeStamp){
 
         while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
-
             this.changeCue.splice(-1,1);
         }
     }
@@ -734,6 +790,7 @@ var physics = (function(){
         var angAcceleration = radian.cross(force) * this.geometry.inv_inertia;
         this.addAngAcceleration(angAcceleration, timeStamp);
     }
+
     var Constraint = function(bodyA, positionA, bodyB, positionB){
         this.bodyA = bodyA;
         this.bodyB = bodyB;
@@ -744,6 +801,7 @@ var physics = (function(){
 }
     Constraint.prototype.resolve = function(timeStamp){
 }
+
     var Joint = function(bodyA, positionA, bodyB, positionB){
         Constraint.call(this, bodyA, positionA, bodyB, positionB);
         this.normal = new Vector();
@@ -789,6 +847,7 @@ var physics = (function(){
         this.bodyA.addPosition(this.offset.clone().scale(invMssA/totalMass), timeStamp);
         this.bodyB.addPosition(this.offset.clone().scale(-invMssB/totalMass), timeStamp);
     }
+
     var ElasticJoint = function(bodyA, positionA, bodyB, positionB, stiffness=200){
         Joint.call(this, bodyA, positionA, bodyB, positionB);
         this.stiffness = stiffness;
@@ -813,6 +872,7 @@ var physics = (function(){
         this.bodyA.applyForce(pointA, force, timeStamp);
         this.bodyB.applyForce(pointB, force.reverse(), timeStamp);
     }
+
     var Rope = function(bodyA, positionA, bodyB, positionB, length=200){
         Joint.call(this, bodyA, positionA, bodyB, positionB);
         this.ropeLength = length;
@@ -829,6 +889,7 @@ var physics = (function(){
 
         Joint.prototype.resolve.call(this, timeStamp);
     }
+
     var ElasticRope = function(bodyA, positionA, bodyB, positionB, length){
         Rope.call(this, bodyA, positionA, bodyB, positionB, length);
         this.stiffness = stiffness;
@@ -843,6 +904,7 @@ var physics = (function(){
 
         ElasticJoint.prototype.resolve.call(this, timeStamp);
     }
+
     var Collision = function Collision(){
         this.bodyA				= false;
         this.bodyB				= false;
@@ -908,6 +970,7 @@ var physics = (function(){
         this.bodyA.applyImpulse(this.point, frictionImpulse, this.timeStamp);
         this.bodyB.applyImpulse(this.point, frictionImpulse.reverse(), this.timeStamp);
     }
+
     var CollisionTests = function(){};
     CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate){
         return this.pointInPoly(geometry, position, angle, coordinate);
@@ -1018,6 +1081,7 @@ var physics = (function(){
         if (Math.abs(distance) > 0.1) return false;
         return collision;
     }
+
     var collisionTests = new CollisionTests();
     // helper functions
     function getTimeForDist(distance, velocity, acceleration){ // make it handle negative d
@@ -1230,14 +1294,17 @@ var physics = (function(){
        ).scale(2/3)
        );
     }
+
     var default_texture = new Texture();
     default_texture.surfaceColor = 'black';
     default_texture.borderColor = 'black';
+
     var default_material = new Material();
     default_material.density			= 0.1;
     default_material.staticFriction		= 0.2;
     default_material.dynamicFriction	= 0.17;
     default_material.restitution		= 0.2;
+
     return {
         InputTracker: InputTracker,
         Scene: Scene,
