@@ -212,7 +212,6 @@ var physics = (function(){
         this.canvas.width	= boxInfo.width;
         this.canvas.height	= boxInfo.height;
         this.setZoom();
-        this.draw(this.timeStamp);
     }
     Scene.prototype.zoom = function(change){
         this.setZoom(this.zoomFactor+change);
@@ -235,39 +234,47 @@ var physics = (function(){
         this.collisionNotes.sort(function(a, b) {return b.timeStamp - a.timeStamp;});
     }
     Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){
-        for(var k=this.collisionNotes.length; k>0; k--){
-            if (n.timeStamp < timeStamp) continue;
-            if (n.bodyA == bodyA || n.bodyB == bodyA){
-                if (n.bodyA == bodyB || n.bodyB == bodyB){
-                    return n;
+        var note;
+        for(var k=this.collisionNotes.length-1; k>0; k--){
+            note = this.collisionNotes[k];
+            if (note.timeStamp < timeStamp) continue;
+            if (note.bodyA == bodyA || note.bodyB == bodyA){
+                if (note.bodyA == bodyB || note.bodyB == bodyB){
+                    return note;
                 }
             }
         }
         return false;
     }
     Scene.prototype.clearCollisionNotes = function(body, timeStamp = false){
-        for(var k=this.collisionNotes.length; k>0; k--){
-            if (timeStamp && n.timeStamp < timeStamp) continue;
-            if (n.bodyA == body || n.bodyB == body){
+        var note;
+        for(var k=this.collisionNotes.length-1; k>0; k--){
+            note = this.collisionNotes[k];
+            if (timeStamp && note.timeStamp < timeStamp) continue;
+            if (note.bodyA == body || note.bodyB == body){
                 this.collisionNotes.splice(k, 1);
             }
         }
     }
     Scene.prototype.clearCollisionNotes = function(bodyA, bodyB, timeStamp = false){
-        for(var k=this.collisionNotes.length; k>0; k--){
-            if (timeStamp && n.timeStamp < timeStamp) continue;
-            if (n.bodyA == bodyA || n.bodyB == bodyA){
-                if (n.bodyA == bodyB || n.bodyB == bodyB){
+        var note;
+        for(var k=this.collisionNotes.length-1; k>0; k--){
+            note = this.collisionNotes[k];
+            if (timeStamp && note.timeStamp < timeStamp) continue;
+            if (note.bodyA == bodyA || note.bodyB == bodyA){
+                if (note.bodyA == bodyB || note.bodyB == bodyB){
                     this.collisionNotes.splice(k, 1);
                 }
             }
         }
     }
     Scene.prototype.purgeOldCollisionNotes = function(timeStamp){
-      for(var k=0; k<this.collisionNotes.length; k--){
-          if (n.timeStamp > timeStamp) continue;
-          this.collisionNotes.splice(k, 1);
-      }
+        var note;
+        for(var k=0; k<this.collisionNotes.length-1; k--){
+            note = this.collisionNotes[k];
+            if (note.timeStamp > timeStamp) continue;
+            this.collisionNotes.splice(k, 1);
+        }
     }
     Scene.prototype.coordinateConvert = function(coordinate){
         return coordinate.clone().subtract({x:this.canvas.width*0.5, y:this.canvas.height*0.5}
@@ -593,18 +600,21 @@ var physics = (function(){
         return this.changeCue[this.changeCue.length-1];
     }
     RigidBody.prototype.getLastSnapshot = function(timeStamp){
-
-        var k;
-        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
-        if (k<0) return false;
-        return this.changeCue[k];
+        for (var k = this.changeCue.length-1; k>=0; k--){
+            if (this.changeCue[k].timeStamp<timeStamp){
+              return this.changeCue[k];
+            }
+        }
+        return false;
     }
     RigidBody.prototype.getNextSnapshot = function(timeStamp){
-
-        var k;
-        for (k = this.changeCue.length-1; k>=0 && this.changeCue[k].timeStamp>timeStamp;k--);
-        if (k==this.changeCue.length-1) return false;
-        return this.changeCue[k+1];
+      for (var k = this.changeCue.length-1; k>=0; k--){
+          if (this.changeCue[k].timeStamp<timeStamp){
+              if (k == this.changeCue.length-1) return false;
+              return this.changeCue[k+1];
+          }
+      }
+      return false;
     }
     RigidBody.prototype.getLatestSnapshotTime = function(){
         return this.getLatestSnapshot().timeStamp;"wtf asd"
@@ -1052,13 +1062,18 @@ var physics = (function(){
         var localTimeStamp = timeStamp;
         var collision;
         var time;
+        var distance;
+        var snapshot;
+        var timespan;
         var k = 0;
         while(k++<5){
             collision = this.SAT(bodyA, bodyB, localTimeStamp)
             if (!collision) return false;
-            //if (collision.offset.dot(collision.normal)<0)return false; // Collition actually uccured
-            var distance = collision.offset.dot(collision.normal);
+            distance = collision.offset.dot(collision.normal);
             if (Math.abs(distance) < 0.1) break;
+
+            timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
+
             if (distance > (collision.bodyA.geometry.radious+collision.bodyB.geometry.radious)/2){
                 var v = collision.bodyA.getVelocity(localTimeStamp).subtract(collision.bodyB.getVelocity(localTimeStamp)).dot(collision.normal);
                 var a = collision.bodyA.getAcceleration(localTimeStamp).subtract(collision.bodyB.getAcceleration(localTimeStamp)).dot(collision.normal);
@@ -1072,18 +1087,43 @@ var physics = (function(){
                 time = getTimeForDist(distance, v, a);
             }
             if(!time) return false;
-            if (time){
-                localTimeStamp+=time;
-                if (localTimeStamp > max) return false;
-                if (localTimeStamp < timeStamp) return false;
-            }
+
+            if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
+            else localTimeStamp = timespan;
+
+            if (localTimeStamp > max) return false;
+            if (localTimeStamp < timeStamp) return false;
+
         }
         if (Math.abs(distance) > 0.1) return false;
         return collision;
     }
 
+
     var collisionTests = new CollisionTests();
     // helper functions
+    function maxOfTwo(value1, value2){
+        if (!value1){
+          if (!value2) return false;
+          return value2;
+        }
+        else if (!value2) return value1
+        else{
+          if (value1<value2) return value1;
+          return value2;
+        }
+    }
+    function minOfTwo(value1, value2){
+        if (!value1){
+          if (!value2) return false;
+          return value2;
+        }
+        else if (!value2) return value1
+        else{
+          if (value1>value2) return value1;
+          return value2;
+        }
+    }
     function getTimeForDist(distance, velocity, acceleration){ // make it handle negative d
         var v = velocity;
         var a = acceleration;
