@@ -163,6 +163,7 @@ var physics = (function(){
                         this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
 
                         collision.resolve();
+                        collision.correct();
                     }
                     else{
                         this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
@@ -379,6 +380,9 @@ var physics = (function(){
 
     var Polygon = function(vertices = []){
         this.vertices	= vertices;
+
+        this.radious;
+        this.minimalAngle;
     }
     Polygon.prototype.clone = function(){
         var obj = new Polygon();
@@ -444,6 +448,21 @@ var physics = (function(){
           }
           offset.add(edge.pointA);
           normal = edge.normal();
+
+          var r = edge.pointA.length();
+          if (!this.radious || r>this.radious){
+              this.radious = r;
+          }
+
+          var angle = 2*Math.asin(edge.pointB.clone(
+          ).normalize(
+          ).subtract(edge.pointA.clone(
+          ).normalize()
+          ).length()*0.5);
+
+          if (!this.minimalAngle || angle<this.minimalAngle){
+              this.minimalAngle = angle;
+          }
       }
       offset.scale(1/this.vertices.length).reverse();
       this.moveOrigin(offset);
@@ -460,7 +479,7 @@ var physics = (function(){
         this.mass;
         this.inv_mass;
         this.inv_inertia;
-        this.radious;
+
         this.setTexture();
         this.setMaterial();
     }
@@ -488,10 +507,9 @@ var physics = (function(){
       this.surfaceArea = 0;
       this.mass = 0;
       this.inertia = 0;
-      var k = 0;
+
       for(var edge of this.iterateEdges() ){
-          k++;
-          // relative coordinate !!!
+
           var v = edge.pointB.clone(
           ).subtract(edge.pointA);
           var b = v.length();
@@ -501,18 +519,18 @@ var physics = (function(){
           var h = edge.pointA.clone(
           ).project(v.perp()
           ).length();
+
           var surfaceArea = b*h/2;
           var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
           var center = new Vector();
           center.x = ( edge.pointA.x + edge.pointB.x ) / 3;
           center.y = ( edge.pointA.y + edge.pointB.y ) / 3;
+
           var d = center.length();
+
           this.inertia		+= surfaceArea * (d*d) + inertia;
           this.surfaceArea	+= surfaceArea;
-          var r = edge.pointA.length();
-          if (!this.radious || r>this.radious){
-              this.radious = r;
-          }
+
       }
 
       this.mass = this.surfaceArea*this.material.density;
@@ -917,7 +935,7 @@ var physics = (function(){
         this.timeStamp;
     }
     Collision.prototype.correct = function(){
-      if (!this.offset) return false;
+      if (!this.offset) return;
       var velocityA = Math.abs(this.bodyA.getVelocityInPoint(this.point, this.timeStamp).dot(this.normal));
       var velocityB = Math.abs(this.bodyB.getVelocityInPoint(this.point, this.timeStamp).dot(this.normal));
       var totalV = velocityA+velocityB;
@@ -1046,27 +1064,42 @@ var physics = (function(){
         var collision;
         var time;
         var distance;
-        var snapshot;
         var timespan;
-        var k = 0;
-        while(k++<50){
-            collision = this.SAT(bodyA, bodyB, localTimeStamp)
-            if (!collision) return false;
-            distance = collision.offset.dot(collision.normal);
-            if (Math.abs(distance) < 0.1) break;
 
-            if (distance > (collision.bodyA.geometry.radious+collision.bodyB.geometry.radious)/2){
+
+
+
+        for(var k = 0; k<500; k++){
+            collision = this.SAT(bodyA, bodyB, localTimeStamp)
+            distance = collision.offset.dot(collision.normal);
+            if (Math.abs(distance) < 0.01) return collision;
+
+            if (distance > (collision.bodyA.geometry.radious+collision.bodyB.geometry.radious)/2){ // linear
                 var v = collision.bodyA.getVelocity(localTimeStamp).subtract(collision.bodyB.getVelocity(localTimeStamp)).dot(collision.normal);
                 var a = collision.bodyA.getAcceleration(localTimeStamp).subtract(collision.bodyB.getAcceleration(localTimeStamp)).dot(collision.normal);
                 time = getTimeForDist(distance, v, a)
             }
-            else{
+            else{ // including rotation;
                 var d1 = collision.bodyA.getLinearValuesInPlane(collision.normal, collision.point, timeStamp);
                 var d2 = collision.bodyB.getLinearValuesInPlane(collision.normal, collision.point.clone().add(collision.offset), timeStamp);
                 var v = d1.velocity - d2.velocity;
                 var a = d1.acceleration - d2.acceleration;
                 time = getTimeForDist(distance, v, a);
+
+                /*
+                var rotationTimeMax = 0.25*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
+                /(Math.abs(bodyA.getAngVelocity(timeStamp)) + Math.abs(bodyA.getAngVelocity(timeStamp)));
+                */
+                var rotationTimeMax = 100;
+                if (!time || Math.abs(time) > rotationTimeMax){
+                  if (time>0)
+                    time = rotationTimeMax;
+                  else
+                    time = -rotationTimeMax;
+                }
+
             }
+
             if(!time) return false;
 
             timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
@@ -1076,8 +1109,7 @@ var physics = (function(){
             if (localTimeStamp > max) return false;
             if (localTimeStamp < timeStamp) return false;
         }
-        if (Math.abs(distance) > 0.1) throw "infinate loop conditions";
-        return collision;
+        throw "infinate loop conditions";
     }
 
 
@@ -1105,7 +1137,7 @@ var physics = (function(){
           return value2;
         }
     }
-    function getTimeForDist(distance, velocity, acceleration){ // make it handle negative d
+    function getTimeForDist(distance, velocity, acceleration){
         var v = velocity;
         var a = acceleration;
         var d = distance;
