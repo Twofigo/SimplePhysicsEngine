@@ -144,7 +144,7 @@ var physics = (function(){
         this.timeStamp = timeStamp;
 */
         if(!this.timeStamp)this.timeStamp = 0;
-        this.timeStamp+=10
+        this.timeStamp+=100
         timeStamp = this.timeStamp;
 
         var loopCondition;
@@ -165,7 +165,7 @@ var physics = (function(){
                         this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
 
                         collision.resolve();
-                        //collision.correct();
+                        collision.correct();
                     }
                     else{
                         this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
@@ -1124,7 +1124,7 @@ var physics = (function(){
                 continue
             }
 
-            if (isNaN(time) || time<0) return false;
+            if (isNaN(time) || time<0) break;
 
             return time*1000;
         }
@@ -1140,14 +1140,24 @@ var physics = (function(){
         for(var k = 0; k<500; k++){
             collision = this.SAT(bodyA, bodyB, localTimeStamp)
             distance = collision.offset.dot(collision.normal);
-            if (Math.abs(distance) < 0.05) return collision;
+            if (Math.abs(distance) < 0.05){
+              if (distance>=0){
+                  collision.offset.scale(0);
+              }
+              return collision;
+            }
             if (distance<0){
-              time*=0.5;
-              localTimeStamp -= time;
-              continue;
+              if (time){
+                  time*=0.5;
+                  localTimeStamp -= time;
+                  continue;
+              }
+              else{
+                  return collision;
+              }
             }
 
-            time = this.conservativeAdvancement(collision, localTimeStamp);
+            if (time == (time = this.conservativeAdvancement(collision, localTimeStamp))) return false;
 
             if (bodyA.geometry.radious + bodyB.geometry.radious > bodyA.getPosition(localTimeStamp).subtract(bodyB.getPosition(localTimeStamp)).length() ) {
                 var rotationTimeMax = 0.5*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
