@@ -148,15 +148,17 @@ var physics = (function(){
         timeStamp = this.timeStamp;
 
         var loopCondition;
+        var t;
         do{
             loopCondition = false;
             for (var k1=0; k1<this.rigidBodies.length; k1++){
                 for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                     if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                    if (this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp)) continue;
+                    t = this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], 0).timeStamp || timeStamp;
+                    if (t >= timeStamp+3000) continue;
 
                     loopCondition = true;
-                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp, timeStamp+3000); // upper limit
+                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+3000); // upper limit
                     if (collision){
                         this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
                         this.clearCollisionNotes(collision.bodyA, collision.timeStamp);
@@ -167,6 +169,11 @@ var physics = (function(){
                     }
                     else{
                         this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
+                    }
+
+                    if (collision.timeStamp < timeStamp+3000){
+                        k2--;
+                        continue;
                     }
                 }
             }
@@ -227,7 +234,7 @@ var physics = (function(){
         this.collisionNotes.push(note);
         this.collisionNotes.sort(function(a, b) {return b.timeStamp - a.timeStamp;});
     }
-    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){
+    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){ // fetches note after timeStamp
         var note;
         for(var k=this.collisionNotes.length-1; k>0; k--){
             note = this.collisionNotes[k];
@@ -1149,15 +1156,13 @@ var physics = (function(){
             else{ // including rotation;
                 time = this.conservativeAdvancement(collision, localTimeStamp);
 
-                var rotationTimeMax = 0.05*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
+                var rotationTimeMax = 0.25*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
                  /(Math.abs(bodyA.getAngVelocity(localTimeStamp)) + Math.abs(bodyB.getAngVelocity(localTimeStamp)));
 
                  if (!time || Math.abs(time) > rotationTimeMax){
                     time = rotationTimeMax;
                  }
             }
-
-            if(!time) return false;
 
             timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
             if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
