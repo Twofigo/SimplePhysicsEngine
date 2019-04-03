@@ -158,6 +158,9 @@ var physics = (function(){
                     if (t >= timeStamp+1000) continue;
 
                     loopCondition = true;
+                    if (this.rigidBodies[k1].id=="poppy" && this.rigidBodies[k2].id=="Jeff"){
+                      console.log("wtf");
+                    }
                     var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+3000); // upper limit
                     if (collision){
                         this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
@@ -168,10 +171,10 @@ var physics = (function(){
                         collision.correct();
                     }
                     else{
-                        this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
+                        this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+2000)
                     }
 
-                    if (collision.timeStamp < timeStamp+3000){
+                    if (collision.timeStamp < timeStamp+2000){
                         k2--;
                         continue;
                     }
@@ -1140,9 +1143,12 @@ var physics = (function(){
         for(var k = 0; k<500; k++){
             collision = this.SAT(bodyA, bodyB, localTimeStamp)
             distance = collision.offset.dot(collision.normal);
-            if (Math.abs(distance) < 0.05){
+            if (Math.abs(distance) < 0.005){
               if (distance>=0){
                   collision.offset.scale(0);
+              }
+              else{
+                  collision.offset.scale(1.1);
               }
               return collision;
             }
@@ -1153,14 +1159,16 @@ var physics = (function(){
                   continue;
               }
               else{
-                  return collision;
+                  return collision; // for 2 consecative collitions within 1 point
               }
             }
 
-            if (time == (time = this.conservativeAdvancement(collision, localTimeStamp))) return false;
+            if (localTimeStamp > max) return false;
+
+            if (time == (time = this.conservativeAdvancement(collision, localTimeStamp))) throw "something is wrong!"; // why is this a thing? **fix
 
             if (bodyA.geometry.radious + bodyB.geometry.radious > bodyA.getPosition(localTimeStamp).subtract(bodyB.getPosition(localTimeStamp)).length() ) {
-                var rotationTimeMax = 0.5*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
+                var rotationTimeMax = 0.25*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
                 /(Math.abs(bodyA.getAngVelocity(localTimeStamp)) + Math.abs(bodyB.getAngVelocity(localTimeStamp)));
 
                 if (!time || Math.abs(time) > rotationTimeMax){
@@ -1173,8 +1181,7 @@ var physics = (function(){
             if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
             else localTimeStamp = timespan;
 
-            if (localTimeStamp > max) return false;
-            if (localTimeStamp < timeStamp) return false;
+            if (localTimeStamp <= timeStamp) return false;
         }
         throw "infinate loop conditions";
     }
