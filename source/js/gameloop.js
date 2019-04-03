@@ -3,73 +3,64 @@ function setup()
 {
     ins = new physics.Scene()
 
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-20,y:-20},
     {x:-20,y:20},
     {x:20,y:20},
     {x:20,y:-20},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly.clone(), 0, 0);
-    geo.addComponent(poly.clone(), 30, 30);
     geo.compile();
-    var obj = new physics.RigidBody()
+
+    var obj = new physics.RigidBody("poppy")
     obj.geometry = geo;
-    obj.setStartPosition(0,0,0);
-    obj.setStartVelocity(30,40,0);
+    obj.setStartPosition(0,0,1);
+    obj.setStartVelocity(70,0,0);
     ins.add(obj);
 
-    var geo = new physics.Geometry();
-    geo.addComponent(poly.clone());
-    geo.compile();
-    var obj = new physics.RigidBody()
+    var obj = new physics.RigidBody("Jeff")
     obj.geometry = geo;
-    obj.setStartPosition(0,100,0);
+    obj.setStartPosition(100,0,0);
     ins.add(obj);
 
     // floor;
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-800,y:-100},
     {x:800,y:-100},
     {x:800,y:100},
     {x:-800,y:100},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly);
     geo.compile(true);
 
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("floor");
     obj.geometry = geo;
     obj.setStartPosition(0,400);
     ins.add(obj);
 
     // roof
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("roof");
     obj.geometry = geo;
     obj.setStartPosition(0,-400);
     ins.add(obj);
 
     // left wall
-    var poly = new physics.Polygon();
-    poly.setVertices([
+    var geo = new physics.Geometry();
+    geo.setVertices([
     {x:-100,y:-800},
     {x:100,y:-800},
     {x:100,y:800},
     {x:-100,y:800},
     ]);
-    var geo = new physics.Geometry();
-    geo.addComponent(poly);
     geo.compile(true);
 
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("left");
     obj.geometry = geo;
     obj.setStartPosition(-500,0);
     ins.add(obj);
 
     // right wall
-    var obj = new physics.RigidBody();
+    var obj = new physics.RigidBody("right");
     obj.geometry = geo;
     obj.setStartPosition(500,0);
     ins.add(obj);
@@ -85,11 +76,12 @@ function setup()
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
 
-    g = new Grabber();
-    tracker.addListener("move", function(d){g.move(d)});
-    tracker.addListener("m1", function(d){g.grabAndDrop(d)});
 
-    window.requestAnimationFrame(mainloop);
+    //g = new Grabber();
+    //tracker.addListener("move", function(d){g.move(d)});
+    //tracker.addListener("m1", function(d){g.grabAndDrop(d)});
+
+    ins.start();
 }
 
 var Grabber = function(){
@@ -119,11 +111,4 @@ Grabber.prototype.move = function(data){
     this.obj.setTimeStamp(data.timeStamp);
     this.obj.setVelocity(data.velocity.scale(0.5).scale(1/ins.zoom), data.timeStamp);
     this.obj.setPosition(cordinate, data.timeStamp);
-}
-
-function mainloop(timeStamp){
-	ins.update(timeStamp);
-	ins.draw(timeStamp);
-
-	window.requestAnimationFrame(mainloop);
 }
