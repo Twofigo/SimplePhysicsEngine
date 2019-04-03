@@ -144,19 +144,21 @@ var physics = (function(){
         this.timeStamp = timeStamp;
 */
         if(!this.timeStamp)this.timeStamp = 0;
-        this.timeStamp+=10
+        this.timeStamp+=100
         timeStamp = this.timeStamp;
 
         var loopCondition;
+        var t;
         do{
             loopCondition = false;
             for (var k1=0; k1<this.rigidBodies.length; k1++){
                 for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
                     if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                    if (this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp)) continue;
+                    t = this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], 0).timeStamp+1 || timeStamp;
+                    if (t >= timeStamp+1000) continue;
 
                     loopCondition = true;
-                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], timeStamp, timeStamp+3000); // upper limit
+                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+3000); // upper limit
                     if (collision){
                         this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
                         this.clearCollisionNotes(collision.bodyA, collision.timeStamp);
@@ -167,6 +169,11 @@ var physics = (function(){
                     }
                     else{
                         this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+3000)
+                    }
+
+                    if (collision.timeStamp < timeStamp+3000){
+                        k2--;
+                        continue;
                     }
                 }
             }
@@ -227,7 +234,7 @@ var physics = (function(){
         this.collisionNotes.push(note);
         this.collisionNotes.sort(function(a, b) {return b.timeStamp - a.timeStamp;});
     }
-    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){
+    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){ // fetches note after timeStamp
         var note;
         for(var k=this.collisionNotes.length-1; k>0; k--){
             note = this.collisionNotes[k];
@@ -628,7 +635,7 @@ var physics = (function(){
       return false;
     }
     RigidBody.prototype.getLatestSnapshotTime = function(){
-        return this.getLatestSnapshot().timeStamp;"wtf asd"
+        return this.getLatestSnapshot().timeStamp;
     }
     RigidBody.prototype.getLastSnapshotTime = function(timeStamp){
 
@@ -1059,6 +1066,70 @@ var physics = (function(){
         collision.offset = dB.normal.clone().scale(dB.distance);
         return collision;
     }
+    CollisionTests.prototype.conservativeAdvancement = function(collision, timeStamp){
+        // linear values
+        var linearV = collision.bodyA.getVelocity(timeStamp).subtract(collision.bodyB.getVelocity(timeStamp)).dot(collision.normal);
+        var linearA = collision.bodyA.getAcceleration(timeStamp).subtract(collision.bodyB.getAcceleration(timeStamp)).dot(collision.normal);
+
+        var pointA = collision.point.clone().subtract(collision.bodyA.getPosition(timeStamp));
+        var pointB = collision.point.clone().add(collision.offset).subtract(collision.bodyB.getPosition(timeStamp));
+
+        var factor;
+        factor = 1 - (pointA.length() / collision.bodyA.geometry.radious);
+        var subV_A = factor * Math.abs(collision.bodyA.getAngVelocity(timeStamp)) * collision.bodyA.geometry.radious;
+        if (isNaN(subV_A) || !isFinite(subV_A)) subV_A = 0;
+        var subT_A = factor * collision.bodyA.geometry.radious/subV_A;
+        if (isNaN(subT_A) || !isFinite(subT_A)) subT_A = 0;
+        var subA_A = -subV_A/subT_A;
+        if (isNaN(subA_A) || !isFinite(subA_A)) subA_A = 0;
+
+        factor = 1 - (pointB.length() / collision.bodyB.geometry.radious);
+        var subV_B = factor * Math.abs(collision.bodyB.getAngVelocity(timeStamp)) * collision.bodyB.geometry.radious;
+        if (isNaN(subV_B) || !isFinite(subV_B)) subV_B = 0;
+        var subT_B = factor * collision.bodyB.geometry.radious/subV_B;
+        if (isNaN(subT_B) || !isFinite(subT_B)) subT_B = 0;
+        var subA_B = -subV_B/subT_B;
+        if (isNaN(subA_B) || !isFinite(subA_B)) subA_B = 0;
+
+        distance = collision.offset.dot(collision.normal);
+
+        var v = linearV + subV_A - subV_B;
+        var a = linearA + subA_A - subA_B;
+        var time;
+        while(1)
+        {
+            if (a){
+              time = (Math.sqrt(v*v - 2*a*distance)-v)/a;
+            }
+            else if (v){
+              time = distance/v
+            }
+            else{
+              return false;
+            }
+
+
+            if (subT_A && (isNaN(time) || time > subT_A) && (!subT_B || subT_A < subT_B)){
+                v = linearV - subV_B;
+                a = linearA - subA_B;
+                subT_A = false;
+                distance -= collision.bodyA.geometry.radious - pointA.length();
+                continue
+            }
+            if (subT_B && (isNaN(time) || time > subT_B)){
+                v = linearV + subV_A;
+                a = linearA + subA_A;
+                subT_B = false;
+                distance -= collision.bodyB.geometry.radious - pointB.length();
+                continue
+            }
+
+            if (isNaN(time) || time<0) break;
+
+            return time*1000;
+        }
+        return false;
+    }
     CollisionTests.prototype.getCollition = function(bodyA, bodyB, timeStamp, max){
         var localTimeStamp = timeStamp;
         var collision;
@@ -1066,41 +1137,37 @@ var physics = (function(){
         var distance;
         var timespan;
 
-
-
-
         for(var k = 0; k<500; k++){
             collision = this.SAT(bodyA, bodyB, localTimeStamp)
             distance = collision.offset.dot(collision.normal);
-            if (Math.abs(distance) < 0.01) return collision;
-
-            if (distance > (collision.bodyA.geometry.radious+collision.bodyB.geometry.radious)/2){ // linear
-                var v = collision.bodyA.getVelocity(localTimeStamp).subtract(collision.bodyB.getVelocity(localTimeStamp)).dot(collision.normal);
-                var a = collision.bodyA.getAcceleration(localTimeStamp).subtract(collision.bodyB.getAcceleration(localTimeStamp)).dot(collision.normal);
-                time = getTimeForDist(distance, v, a)
+            if (Math.abs(distance) < 0.05){
+              if (distance>=0){
+                  collision.offset.scale(0);
+              }
+              return collision;
             }
-            else{ // including rotation;
-                var d1 = collision.bodyA.getLinearValuesInPlane(collision.normal, collision.point, timeStamp);
-                var d2 = collision.bodyB.getLinearValuesInPlane(collision.normal, collision.point.clone().add(collision.offset), timeStamp);
-                var v = d1.velocity - d2.velocity;
-                var a = d1.acceleration - d2.acceleration;
-                time = getTimeForDist(distance, v, a);
+            if (distance<0){
+              if (time){
+                  time*=0.5;
+                  localTimeStamp -= time;
+                  continue;
+              }
+              else{
+                  return collision;
+              }
+            }
 
-                /*
-                var rotationTimeMax = 0.25*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
-                /(Math.abs(bodyA.getAngVelocity(timeStamp)) + Math.abs(bodyA.getAngVelocity(timeStamp)));
-                */
-                var rotationTimeMax = 100;
+            if (time == (time = this.conservativeAdvancement(collision, localTimeStamp))) return false;
+
+            if (bodyA.geometry.radious + bodyB.geometry.radious > bodyA.getPosition(localTimeStamp).subtract(bodyB.getPosition(localTimeStamp)).length() ) {
+                var rotationTimeMax = 0.5*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
+                /(Math.abs(bodyA.getAngVelocity(localTimeStamp)) + Math.abs(bodyB.getAngVelocity(localTimeStamp)));
+
                 if (!time || Math.abs(time) > rotationTimeMax){
-                  if (time>0)
-                    time = rotationTimeMax;
-                  else
-                    time = -rotationTimeMax;
+                  time = rotationTimeMax;
                 }
-
             }
-
-            if(!time) return false;
+            if (!time) return false;
 
             timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
             if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
@@ -1144,12 +1211,7 @@ var physics = (function(){
         var t;
         if (!d) return false;
         if (a){
-          if (distance > 0){
-            t = (Math.sqrt(v*v - 2*a*d)-v)/a;
-          }
-          else{ // reverse time
-            t = -(Math.sqrt(v*v + 2*a*d)+v)/a;
-          }
+          t = (Math.sqrt(v*v - 2*a*d)-v)/a;
           if (isNaN(t)) return false;
           return t*1000;
         }
@@ -1164,6 +1226,7 @@ var physics = (function(){
         if (radian < 0) radian=2*Math.PI + (radian%(2*Math.PI));
         return radian;
     }
+
     // extended -------------------------------------------------------------------------------------------------
     var InputTracker = function(){
         this.canvas = false;
