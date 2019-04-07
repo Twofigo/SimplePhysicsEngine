@@ -321,42 +321,34 @@ var physics = (function(){
     }
 
     var Edge = function(pointA = new Vector(), pointB = new Vector()){
-        this.pointA 	= pointA;
-        this.pointB 	= pointB;
+        this.pA 	= pointA;
+        this.pB 	= pointB;
     }
     Edge.prototype.clone = function(){
-        return new Edge(this.pointA.clone(), this.pointB.clone());
+        return new Edge(this.pA.clone(), this.pB.clone());
     }
     Edge.prototype.normal = function(){
-        return this.pointB.clone().subtract(this.pointA).normalize().perp();
+        return this.pB.clone().subtract(this.pA).normalize().perp();
     }
-    Edge.prototype.rotate = function(angle){
-        this.pointA.rotate(angle);
-        this.pointB.rotate(angle);
+    Edge.prototype.scale = function(x = 0, y = x){
+        this.pA.scale(vector);
+        this.pB.scale(vector);
         return this;
     }
-    Edge.prototype.add = function(position){
-        this.pointA.add(position);
-        this.pointB.add(position);
+    Edge.prototype.add = function(vector){
+        this.pA.add(vector);
+        this.pB.add(vector);
         return this;
     }
-    Edge.prototype.intersect = function(edge){
-        var coordinate = new Vector();
-        var s1_x = this.pointB.x - this.pointA.x;
-        var s1_y = this.pointB.y - this.pointA.y;
-        var s2_x = edge.pointB.x - edge.pointA.x;
-        var s2_y = edge.pointB.y - edge.pointA.y;
-        var xDiff = this.pointA.x - edge.pointA.x;
-        var yDiff = this.pointA.y - edge.pointA.y;
-        var s = (s1_x*yDiff - s1_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
-        var t = (s2_x*yDiff - s2_y*xDiff) / (s1_x*s2_y - s2_x*s1_y);
-        if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
-        {
-            coordinate.x = this.pointA.x + (t * s1_x);
-            coordinate.y = this.pointA.y + (t * s1_y);
-            return coordinate;
-        }
-        return false; // No collision
+    Edge.prototype.subtract = function(vector){
+        this.pA.subtract(vector);
+        this.pB.subtract(vector);
+        return this;
+    }
+    Edge.prototype.rotate = function(angle = 0){
+        this.pA.rotate(vector);
+        this.pB.rotate(vector);
+        return this;
     }
 
     var Polygon = function(vertices = []){
