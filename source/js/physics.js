@@ -182,19 +182,13 @@ var physics = (function(){
         return this;
     }
 
-    var Polygon = function(vertices = []){
-        this.vertices	= vertices;
-
+    var Polygon = function(vertices){
+        this.vertices;
         this.radious;
-        this.minimalAngle;
     }
     Polygon.prototype.clone = function(){
         var obj = new Polygon();
-        for(var vertex of this.iterateVertices())
-        {
-            obj.vertices.push(vertex);
-        }
-        return obj;
+        return obj.setVertices(this.vertices);
     }
     Polygon.prototype.setVertices = function(vertices){
         this.vertices = [];
@@ -203,76 +197,68 @@ var physics = (function(){
         }
     }
     Polygon.prototype.iterateVertices = function*(){
-        if (this.vertices == undefined) return false;
-        for(var vertex of this.vertices)
-        {
+        for(var vertex of this.vertices){
             yield vertex.clone();
         }
     }
     Polygon.prototype.iterateEdges = function*(){
         var edge = new Edge();
-        edge.pointA=false;
-        edge.pointB=false;
-        var startPoint=	false;
+        var start=	false;
         for(var vertex of this.iterateVertices())
         {
-            if (edge.pointB===false)
+            if (start===false)
             {
-                startPoint = vertex;
-                edge.pointB = vertex;
+                start = vertex;
+                edge.pB = vertex;
                 continue;
             }
-            edge.pointA = edge.pointB;
-            edge.pointB = vertex;
+            edge.pA = edge.pB;
+            edge.pB = vertex;
             yield edge.clone();
         }
-        edge.pointA = edge.pointB;
-        edge.pointB = startPoint;
+        edge.pA = edge.pB;
+        edge.pB = start;
         yield edge.clone();
     }
     Polygon.prototype.moveOrigin = function(offset){
-       for (vertex of this.vertices){
+        for (vertex of this.vertices){
            vertex.add(offset);
-       }
+        }
     }
     Polygon.prototype.rotate = function(angle){
-       for (vertex of this.vertices){
+        for (vertex of this.vertices){
            vertex.rotate(angle);
-       }
+        }
     }
     Polygon.prototype.compile = function(){
-      var offset = new Vector();
-      var normal;
-      var dir;
-      for(var edge of this.iterateEdges()){
-          if (normal){
-            var n = normal.dot(edge.pointB);
-            if (n*dir > 1 || !dir ) dir=n;
-            else throw "Cannot compile non convex polygon";
-          }
-          offset.add(edge.pointA);
-          normal = edge.normal();
+        var offset = new Vector();
 
-          var r = edge.pointA.length();
-          if (!this.radious || r>this.radious){
-              this.radious = r;
-          }
+        // convex and clockwise check
+        var normal;
+        var direction;
+        var radious;
 
-          var angle = 2*Math.asin(edge.pointB.clone(
-          ).normalize(
-          ).subtract(edge.pointA.clone(
-          ).normalize()
-          ).length()*0.5);
+        for(var edge of this.iterateEdges()){
+            if (normal){
+                var temp = normal.dot(edge.pB);
+                if (!direction) direction = temp>0?1:-1;
+                if (temp*direction < 0) throw "Cannot compile non convex polygon";
+            }
+            offset.add(edge.pA);
+            normal = edge.normal();
+        }
+        offset.scale(1/this.vertices.length).reverse();
+        this.moveOrigin(offset);
+        if(direction>0){ // makes nodes always go counter clockwise
+            this.vertices.reverse();
+        }
 
-          if (!this.minimalAngle || angle<this.minimalAngle){
-              this.minimalAngle = angle;
-          }
-      }
-      offset.scale(1/this.vertices.length).reverse();
-      this.moveOrigin(offset);
-      if(dir>0){ // makes nodes always go counter clockwise
-          this.vertices.reverse();
-      }
+        for(var vertex of this.iterateVertices()){
+            radious = edge.pA.length();
+            if (!this.radious || radious>this.radious){
+                this.radious = radious;
+            }
+        }
     }
 
     var Material = function(){
