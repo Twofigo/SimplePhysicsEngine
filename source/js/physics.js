@@ -766,10 +766,9 @@ var physics = (function(){
         if (radian < 0) radian=2*Math.PI + (radian%(2*Math.PI));
         return radian;
     }
-
     // extended -------------------------------------------------------------------------------------------------
     var InputTracker = function(){
-        this.canvas = false;
+        this.object = false;
         this.disabled = true;
         this.canvasOffset = new Vector();
         this.cursorPosition = new Vector();
@@ -800,18 +799,18 @@ var physics = (function(){
     InputTracker.prototype.disable = function(){
         this.disabled = true;
     }
-    InputTracker.prototype.set = function(canvas){
-        if (this.canvas) return;
-        this.canvas = canvas;
+    InputTracker.prototype.set = function(object){
+        if (this.object) return;
+        this.object = object;
         var self = this;
-        this.canvas.addEventListener("mousemove", function(event){self.cursorMove(event)});
-        this.canvas.addEventListener("mousedown", function(event){self.cursorStart(event)});
-        this.canvas.addEventListener("mouseup", function(event){self.cursorEnd(event)});
-        this.canvas.addEventListener("touchmove", function(event){self.cursorMove(event)});
-        this.canvas.addEventListener("touchstart", function(event){self.cursorStart(event)});
-        this.canvas.addEventListener("touchend", function(event){self.cursorEnd(event)});
-        //this.canvas.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
-        //this.canvas.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
+        this.object.addEventListener("mousemove", function(event){self.cursorMove(event)});
+        this.object.addEventListener("mousedown", function(event){self.cursorStart(event)});
+        this.object.addEventListener("mouseup", function(event){self.cursorEnd(event)});
+        this.object.addEventListener("touchmove", function(event){self.cursorMove(event)});
+        this.object.addEventListener("touchstart", function(event){self.cursorStart(event)});
+        this.object.addEventListener("touchend", function(event){self.cursorEnd(event)});
+        //this.object.addEventListener("mouseleave", function(event){self.cursorEnd(event)});
+        //this.object.addEventListener("mouseenter", function(event){self.cursorEnd(event)});
         document.body.addEventListener("keydown", function(event){self.keyStart(event)});
         document.body.addEventListener("keyup", function(event){self.keyEnd(event)});
     }
@@ -917,7 +916,7 @@ var physics = (function(){
         this.notify(key, data);
     }
     InputTracker.prototype.getCursorPos = function(event){
-        var boxInfo = this.canvas.getBoundingClientRect();
+        var boxInfo = this.object.getBoundingClientRect();
         if(event instanceof MouseEvent){
             return new Vector(
             event.clientX-boxInfo.left,
