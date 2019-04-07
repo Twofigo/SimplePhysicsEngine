@@ -444,6 +444,24 @@ var physics = (function(){
       }
     }
 
+    var Material = function(){
+        this.density;
+        this.staticFriction;
+        this.dynamicFriction;
+        this.restitution;
+    }
+    var default_material = new Material();
+    default_material.density			= 0.1;
+    default_material.staticFriction		= 0.2;
+    default_material.dynamicFriction	= 0.17;
+    default_material.restitution		= 0.2;
+
+    var Texture = function(){
+        this.surfaceColor;
+    }
+    var default_texture = new Texture();
+    default_texture.surfaceColor = 'black';
+
     var Geometry = function(){
         this.texture;
         this.material;
@@ -1272,30 +1290,11 @@ var physics = (function(){
        ).scale(2/3)
        );
     }
-
-    var default_texture = new Texture();
-    default_texture.surfaceColor = 'black';
-    default_texture.borderColor = 'black';
-
-    var default_material = new Material();
-    default_material.density			= 0.1;
-    default_material.staticFriction		= 0.2;
-    default_material.dynamicFriction	= 0.17;
-    default_material.restitution		= 0.2;
+*/
 
     return {
-        InputTracker: InputTracker,
-        Scene: Scene,
-        Vector: Vector,
-        Material: Material,
-        Geometry: Geometry,
-        ElasticJoint: ElasticJoint,
-        Joint: Joint,
-        ElasticRope: ElasticRope,
-        Rope: Rope,
-        RigidBody: RigidBody,
-        default_texture: default_texture,
-        default_material: default_material,
-        collisionTests: CollisionTests,
+    Vector: Vector,
+    Scene: Scene,
+    RigidBody: RigidBody,
     };
 })();
