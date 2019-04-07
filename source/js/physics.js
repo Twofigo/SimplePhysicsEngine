@@ -360,6 +360,16 @@ var physics = (function(){
         this.inv_mass = 1/this.mass;
         this.inv_inertia = 1/this.inertia;
     }
+    Geometry.prototype.freeze = function(frozen) {
+        if (frozen){
+            this.inv_mass = 0;
+            this.inv_inertia = 0;
+        }
+        else{
+            this.inv_mass = 1/this.mass;
+            this.inv_inertia = 1/this.inertia;
+        }
+    }
 
     var Snapshot = function(){
         this.timeStamp;
