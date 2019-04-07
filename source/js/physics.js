@@ -918,7 +918,6 @@ var physics = (function(){
        ).scale(2/3)
        );
     }
-*/
 
     return {
     Vector: Vector,
