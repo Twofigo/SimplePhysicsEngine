@@ -65,9 +65,9 @@ var physics = (function(){
         return Math.sqrt(this.squareLength());
     }
 
-    var createScene(){
+    var createScene = function(){
         return new Scene();
-    };
+    }
 
     var Scene = function(){
         this.entities	= [];
@@ -75,10 +75,10 @@ var physics = (function(){
         this.views = [];
     }
     Scene.prototype.addEntity = function(entity){
-        this.rigidBodies.push(entity);
+        this.entities.push(entity);
     }
-    Scene.prototype.createView(canvas){
-        var view = new View(canvas);
+    Scene.prototype.createView = function(canvas){
+        var view = new View(canvas, this);
         this.views.push(view);
         return view;
     }
@@ -125,8 +125,8 @@ var physics = (function(){
             this.pxScaler = this.zoom*this.canvas.height / 1000;
         }
     }
-    View.prototype.setPosition = function(position){
-        this.position = position.clone()
+    View.prototype.setPosition = function(x,y){
+        this.position = new Vector(x,y);
     }
     View.prototype.sizeAdjust = function(){
         var box = this.canvas.getBoundingClientRect();
@@ -151,9 +151,11 @@ var physics = (function(){
     }
     View.prototype.draw = function(timeStamp){
         this.ctx.save();
-        this.ctx.clearRect(0,0,canvas.width, canvas.height);
+        this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
         this.ctx.translate(this.position.x, this.position.y);
-        this.ctx.setTransform(this.pxScaler,0,0,this.pxScaler,this.canvas.width*0.5,this.canvas.height*0.5);
+        this.ctx.setTransform(this.pxScaler,0,0,-this.pxScaler,
+            this.position.x*this.pxScaler+this.canvas.width*0.5,
+            -this.position.y*this.pxScaler+this.canvas.height*0.5);
 
         for(obj of this.scene.entities){
             this.drawGeometry(obj.geometry, obj.getPosition(timeStamp), obj.getAngle(timeStamp));
@@ -161,7 +163,7 @@ var physics = (function(){
 
         this.ctx.restore();
     }
-    Scene.prototype.drawGeometry = function(geometry, position, angle){
+    View.prototype.drawGeometry = function(geometry, position, angle){
         this.ctx.beginPath();
         for(var vertex of geometry.iterateVertices()){
             vertex.rotate(angle
@@ -344,8 +346,9 @@ var physics = (function(){
             var v = edge.pB.clone().subtract(edge.pA);
 
             var b = v.length();
-            var a = edge.pB.dot(v).scale(1/v.squareLength());
-            var h = edge.pB.dot(v.perp()).scale(1/v.squareLength());
+            v.normalize();
+            var a = edge.pB.dot(v);
+            var h = edge.pB.dot(v.clone().perp());
 
             var surfaceArea = b*h/2;
             var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
@@ -372,12 +375,13 @@ var physics = (function(){
     }
 
     var Snapshot = function(){
-        this.timeStamp;
-        this.position;
-        this.velocity;
-        this.acceleration;
-        this.angle;
-        this.angVelocity;
+        this.timeStamp = 0;
+        this.position = new Vector();
+        this.velocity = new Vector();
+        this.acceleration = new Vector();
+        this.angle = 0;
+        this.angVelocity = 0;
+        this.angAcceleration = 0;
     }
 
     var RigidBody = function(id=""){
@@ -385,8 +389,7 @@ var physics = (function(){
         this.geometry;
         this.collitions = [];
         this.changeCue = [];
-        this.changeCue.push(new Snapshot);
-
+        this.changeCue.push(new Snapshot());
     }
     RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
       this.setPosition(new Vector(x, y), 0);
@@ -397,7 +400,7 @@ var physics = (function(){
       this.setAngVelocity(angVelocity, 0);
     }
     RigidBody.prototype.createSnapshot = function(timeStamp){
-        this.purgeSnapshot(timeStamp);
+        this.purgeSnapshots(timeStamp);
         if (this.changeCue[this.changeCue.length-1].timeStamp != timeStamp){
             var s = new Snapshot();
             s.timeStamp = timeStamp;
@@ -409,7 +412,7 @@ var physics = (function(){
         }
     }
     RigidBody.prototype.addCollision = function(collision){
-        this.purgeSnapshot(collision.timeStamp, true);
+        this.purgeSnapshots(collision.timeStamp, true);
         collision.resolve();
         this.changeCue.push(collision);
     }
@@ -952,7 +955,8 @@ var physics = (function(){
 
     return {
     Vector: Vector,
-    Scene: Scene,
     RigidBody: RigidBody,
+    Geometry: Geometry,
+    createScene: createScene,
     };
 })();
