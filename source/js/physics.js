@@ -340,71 +340,49 @@ var physics = (function(){
     }
 
     var Snapshot = function(){
-      this.timeStamp = 0;
-      this.position = new Vector();
-      this.velocity = new Vector();
-      this.acceleration = new Vector();
-      this.angle = 0;
-      this.angVelocity = 0;
-      this.angAcceleration = 0;
+        this.timeStamp;
+        this.position;
+        this.velocity;
+        this.acceleration;
+        this.angle;
+        this.angVelocity;
     }
 
     var RigidBody = function(id=""){
         this.id = id;
         this.geometry;
-        this.changeCue    = [];
-        this.changeCue.push(new Snapshot);"left"
-    }
-    RigidBody.prototype.setTimeStamp = function(timeStamp){
+        this.collitions = [];
+        this.changeCue = [];
+        this.changeCue.push(new Snapshot);
 
-        this.timeStamp = timeStamp;
     }
     RigidBody.prototype.setStartPosition = function(x=0, y=0, angle=0){
       this.setPosition(new Vector(x, y), 0);
       this.setAngle(angle, 0);
     }
-    RigidBody.prototype.setStartVelocity = function(vX=0, vY=0, vAngle=0){
-      this.setVelocity(new Vector(vX, vY), 0);
-      this.setAngVelocity(vAngle, 0);
-    }
-    RigidBody.prototype.update = function(timeStamp){
-
-        if(!this.timeStamp)this.timeStamp = timeStamp;
-        var time = (timeStamp - this.timeStamp) / 1000;
-        if (!time) return;
-        this.position = this.getPosition(timeStamp);
-        this.velocity = this.getVelocity(timeStamp);
-        this.angle = this.getAngle(timeStamp);
-        this.angVelocity = this.getAngVelocity(timeStamp);
-        // position
-        this.setTimeStamp(timeStamp);
+    RigidBody.prototype.setStartVelocity = function(velocity_x=0, velocity_y=0, angVelocity=0){
+      this.setVelocity(new Vector(velocity_x, velocity_y), 0);
+      this.setAngVelocity(angVelocity, 0);
     }
     RigidBody.prototype.createSnapshot = function(timeStamp){
-
         this.purgeSnapshot(timeStamp);
         if (this.changeCue[this.changeCue.length-1].timeStamp != timeStamp){
-
             var s = new Snapshot();
             s.timeStamp = timeStamp;
             s.position = this.getPosition(timeStamp);
             s.velocity = this.getVelocity(timeStamp);
-            s.acceleration = this.getAcceleration(timeStamp);
             s.angle = this.getAngle(timeStamp);
             s.angVelocity = this.getAngVelocity(timeStamp);
-            s.angAcceleration = this.getAngAcceleration(timeStamp);
             this.changeCue.push(s);
         }
     }
-    RigidBody.prototype.purgeSnapshot = function(timeStamp){
-
-        while(this.changeCue.length>1 && this.changeCue[this.changeCue.length-1].timeStamp > timeStamp){
-            this.changeCue.splice(-1,1);
-        }
-    }
-    RigidBody.prototype.getLatestSnapshot = function(){
-        return this.changeCue[this.changeCue.length-1];
+    RigidBody.prototype.addCollision = function(collision){
+        this.purgeSnapshot(collision.timeStamp, true);
+        collision.resolve();
+        this.changeCue.push(collision);
     }
     RigidBody.prototype.getLastSnapshot = function(timeStamp){
+        this.clearInvalidCollitions();
         for (var k = this.changeCue.length-1; k>=0; k--){
             if (this.changeCue[k].timeStamp<timeStamp){
               return this.changeCue[k];
@@ -421,6 +399,32 @@ var physics = (function(){
       }
       return false;
     }
+    RigidBody.prototype.purgeSnapshots = function(timeStampm, includeCurrent=false){
+        while(this.collitions.length>0 && (this.collitions[this.collitions.length-1].timeStamp > timeStamp || (includeCurrent && this.collitions[this.collitions.length-1].timeStamp == timeStamp))){
+            this.collitions[this.collitions.length-1].invalid=true;
+            this.collitions.splice(-1,1);
+        }
+        while(this.changeCue.length>1 && (this.changeCue[this.changeCue.length-1].timeStamp > timeStamp || (includeCurrent && this.changeCue[this.changeCue.length-1].timeStamp == timeStamp))){
+            this.changeCue.splice(-1,1);
+        }
+    }
+    RigidBody.prototype.clearHistory = function(timeStamp, includeCurrent=false){
+        while(this.collitions.length>0 && (this.collitions[0].timeStamp < timeStamp || (includeCurrent && this.collitions[0].timeStamp == timeStamp))){
+            this.collitions.splice(0,1);
+        }
+        while(this.changeCue.length>1 && (this.changeCue[0].timeStamp < timeStamp || (includeCurrent && this.changeCue[0].timeStamp == timeStamp))){
+            this.changeCue.splice(0,1);
+        }
+    }
+    RigidBody.prototype.clearInvalidCollitions = function(){
+        for(var k=0; k<this.collitions.length; k++){
+            if (this.collitions[k].invalid == true){
+                this.purgeSnapshots(this.collitions[k].timeStamp, true);
+                return;
+            }
+        }
+    }
+
     RigidBody.prototype.getLatestSnapshotTime = function(){
         return this.getLatestSnapshot().timeStamp;
     }
