@@ -1,32 +1,34 @@
 var physics = (function(){
-    var Vector = function(x   = 0, y   = 0){
-       this.set(x,y);
+
+    var Vector = function(x,y){
+        this.x;
+        this.y;
+        this.set(x,y);
     }
-    Vector.prototype.set = function(x   = 0, y   = 0){
-        this.x  = x;
-        this.y  = y;
+    Vector.prototype.set = function(x, y){
+        this.x = x || 0;
+        this.y = y || 0;
+        return this;
+    }
+    Vector.prototype.copy = function(vector){
+        return this.set(vector.x, vector.y);
     }
     Vector.prototype.clone = function(){
         return new Vector(this.x, this.y);
     }
-    Vector.prototype.reverse = function(){
-        this.x = -this.x;
-        this.y = -this.y;
+    Vector.prototype.scale = function(x = 0, y = x){
+        this.x  *= x;
+        this.y  *= y;
         return this;
     }
-    Vector.prototype.normalize = function(){
-        var length = this.length();
-        if(length > 0)
-        {
-            this.scale(1/length);
-        }
-        return this;
+    Vector.prototype.reverse = function(){
+        return this.scale(-1);
     }
     Vector.prototype.perp = function(){
-        var x = this.x;
-        this.x = this.y;
-        this.y = -x;
-        return this;
+        return this.set(this.y, -this.x);
+    }
+    Vector.prototype.project = function(normal){
+        return this.copy(normal.clone().scale(this.dot(normal)));
     }
     Vector.prototype.add = function(vector){
         this.x += vector.x;
@@ -38,60 +40,29 @@ var physics = (function(){
         this.y -= vector.y;
         return this;
     }
-    Vector.prototype.project = function(vector){
-        var c = this.dot(vector) / vector.squareLength();
-        if (isFinite(c)){
-            this.x = c * vector.x;
-            this.y = c * vector.y;
-        }
-        else {
-          this.scale(0);
-        }
-        return this;
-    }
-    Vector.prototype.scale = function(x   = 0, y   = x){
-        this.x  *= x;
-        this.y  *= y;
-        return this;
-    }
     Vector.prototype.rotate = function(angle = 0){
         var s = Math.sin(angle);
         var c = Math.cos(angle);
-        var x = this.x;
-        var y = this.y;
-        this.x = x*c - y*s;
-        this.y = x*s + y*c;
+        return this.set(this.x*c - this.y*s, this.x*s + this.y*c);
+    }
+    Vector.prototype.normalize = function(){
+        var l = this.length();
+        if(l > 0){
+            this.scale(1/l);
+        }
         return this;
     }
     Vector.prototype.translate = function(normal){
-        var x = this.dot(normal);
-        var y = this.dot(normal.clone().perp());
-        this.x = x;
-        this.y = y;
-        return this;
+        return this.set(this.dot(normal), this.dot(normal.clone().perp()));
     }
-    Vector.prototype.translateRev = function(normal){
-        var v = normal.clone(
-        ).scale(this.x
-        ).add(normal.clone(
-        ).perp(
-        ).scale(this.y)
-        );
-        this.x = v.x;
-        this.y = v.y;
-        return this;
+    Vector.prototype.dot = function(vector){
+        return this.x * vector.x + this.y * vector.y;
     }
     Vector.prototype.squareLength = function(){
         return this.dot(this);
     }
     Vector.prototype.length = function(){
         return Math.sqrt(this.squareLength());
-    }
-    Vector.prototype.dot = function(vector){
-        return this.x * vector.x + this.y * vector.y;
-    }
-    Vector.prototype.cross = function(vector){
-        return this.x * vector.y - this.y * vector.x;
     }
 
     var Scene = function(){
