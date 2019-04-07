@@ -282,9 +282,10 @@ var physics = (function(){
     var Geometry = function(){
         this.texture;
         this.material;
+
         this.surfaceArea;
-        this.inertia;
-        this.mass;
+        this.mass = 0;
+        this.inertia = 0;
         this.inv_mass;
         this.inv_inertia;
 
@@ -297,60 +298,45 @@ var physics = (function(){
         obj.vertices = Polygon.prototype.clone.call(this).vertices;
         obj.texture = this.texture;
         obj.material = this.material;
+
         obj.surfaceArea = this.surfaceArea;
-        obj.inertia = this.inertia;
         obj.mass = this.mass;
+        obj.inertia = this.inertia;
         obj.inv_mass = this.inv_mass;
         obj.inv_inertia = this.inv_inertia;
         return obj;
     }
-    Geometry.prototype.setTexture = function(texture=default_texture){
-        this.texture = texture;
+    Geometry.prototype.setTexture = function(texture){
+        this.texture = texture || default_texture;
     }
-    Geometry.prototype.setMaterial = function(material=default_material){
-        this.material = material;
+    Geometry.prototype.setMaterial = function(material){
+        this.material = material || default_material;
     }
-    Geometry.prototype.compile = function(fixed = false) {
-      Polygon.prototype.compile.call(this);
-      this.surfaceArea = 0;
-      this.mass = 0;
-      this.inertia = 0;
+    Geometry.prototype.compile = function() {
+        Polygon.prototype.compile.call(this);
+        this.surfaceArea = 0;
+        this.mass = 0;
+        this.inertia = 0;
 
-      for(var edge of this.iterateEdges() ){
+        for(var edge of this.iterateEdges()){
+            var v = edge.pB.clone().subtract(edge.pA);
 
-          var v = edge.pointB.clone(
-          ).subtract(edge.pointA);
-          var b = v.length();
-          var a = edge.pointA.clone(
-          ).project(v
-          ).length();
-          var h = edge.pointA.clone(
-          ).project(v.perp()
-          ).length();
+            var b = v.length();
+            var a = edge.pB.dot(v).scale(1/v.squareLength());
+            var h = edge.pB.dot(v.perp()).scale(1/v.squareLength());
 
-          var surfaceArea = b*h/2;
-          var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
-          var center = new Vector();
-          center.x = ( edge.pointA.x + edge.pointB.x ) / 3;
-          center.y = ( edge.pointA.y + edge.pointB.y ) / 3;
+            var surfaceArea = b*h/2;
+            var inertia = b*h*(b*b - b*a + a*a + h*h)/36;
 
-          var d = center.length();
+            var d = edge.pB.clone().add(edge.pA).length()/3;
+            this.inertia		+= surfaceArea * (d*d) + inertia;
+            this.surfaceArea	+= surfaceArea;
+        }
 
-          this.inertia		+= surfaceArea * (d*d) + inertia;
-          this.surfaceArea	+= surfaceArea;
-
-      }
-
-      this.mass = this.surfaceArea*this.material.density;
-      this.inertia*=this.material.density;
-      if (!fixed){
-          this.inv_mass = 1/this.mass;
-          this.inv_inertia = 1/this.inertia;
-      }
-      else{
-          this.inv_mass = 0
-          this.inv_inertia = 0;
-      }
+        this.mass = this.surfaceArea*this.material.density;
+        this.inertia*=this.material.density;
+        this.inv_mass = 1/this.mass;
+        this.inv_inertia = 1/this.inertia;
     }
 
     var Snapshot = function(){
