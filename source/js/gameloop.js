@@ -17,12 +17,12 @@ function setup()
     obj.geometry = geo;
     obj.setStartPosition(0,0,1);
     obj.setStartVelocity(70,0,0);
-    scene.add(obj);
+    scene.addEntity(obj);
 
     var obj = new physics.RigidBody("Jeff")
     obj.geometry = geo;
     obj.setStartPosition(100,0,0);
-    scene.add(obj);
+    scene.addEntity(obj);
 
     // floor;
     var geo = new physics.Geometry();
@@ -38,13 +38,13 @@ function setup()
     var obj = new physics.RigidBody("floor");
     obj.geometry = geo;
     obj.setStartPosition(0,400);
-    scene.add(obj);
+    scene.addEntity(obj);
 
     // roof
     var obj = new physics.RigidBody("roof");
     obj.geometry = geo;
     obj.setStartPosition(0,-400);
-    scene.add(obj);
+    scene.addEntity(obj);
 
     // left wall
     var geo = new physics.Geometry();
@@ -60,21 +60,18 @@ function setup()
     var obj = new physics.RigidBody("left");
     obj.geometry = geo;
     obj.setStartPosition(-500,0);
-    scene.add(obj);
+    scene.addEntity(obj);
 
     // right wall
     var obj = new physics.RigidBody("right");
     obj.geometry = geo;
     obj.setStartPosition(500,0);
-    scene.add(obj);
+    scene.addEntity(obj);
 
-    scene.gravity.y=300;
-    scene.setup(document.getElementById("gameboard"));
-
-    this.obj = new physics.RigidBody();
-    this.obj.geometry = new physics.Geometry();
-    var r = new physics.Rope()
 
     view = scene.createView(document.getElementById("gameboard"));
+    view.setZoom(1);
+    view.setPosition(0,0);
+    view.sizeAdjust();
     scene.start();
 }
