@@ -66,227 +66,78 @@ var physics = (function(){
     }
 
     var Scene = function(){
-        this.canvas			= false;
-        this.ctx			= false;
-        this.timeStamp      = false;
-        this.zoomFactor			= 1.2;
-        this.position           = new Vector();
-        this.zoom               = false;
-        this.gravity = new Vector();
-
-        this.rigidBodies	= [];
-        this.constraints = [];
-
-        this.collisionNotes = [];
+        this.entities	= [];
     }
-    Scene.prototype.setup = function(canvas){
+    Scene.prototype.addEntity = function(entity){
+        this.rigidBodies.push(entity);
+    }
+    Scene.prototype.update = function(timeStamp){
+
+    }
+
+    var View = function(canvas, scene){
+        this.canvas;
+        this.ctx;
+        this.scene = scene;
+
+        this.canvasPosition;
+
+        //camera
+        this.zoom = 1;
+        this.position = new Vector();
+        this.pxScaler;
+    }
+    View.prototype.setup = function(canvas){
         if (!this.canvas) this.canvas = canvas;
         if (!this.context) this.ctx = this.canvas.getContext("2d");
-        this.setSize();
+        this.sizeAdjust();
     }
-    Scene.prototype.start = function(){
-        var self = this;
-        var loop = function(timeStamp) {
-          ins.update(timeStamp);
-        	ins.draw(timeStamp);
-        	window.requestAnimationFrame(loop)
-        };
-        window.requestAnimationFrame(loop);
-    }
-    Scene.prototype.add = function(obj){
-        if (obj instanceof RigidBody)
-        {
-            this.rigidBodies.push(obj);
-        }
-        else if (obj instanceof Constraint)
-        {
-            this.constraints.push(obj)
-        }
-    }
-    Scene.prototype.update = function(timeStamp = false){
-        /*
-        if(!this.timeStamp || timeStamp-this.timeStamp > 100){
-            for(var body of this.rigidBodies){
-                body.setTimeStamp(timeStamp);
-            }
-            this.timeStamp = timeStamp;
-            return;
-        }
-        this.timeStamp = timeStamp;
-*/
-        if(!this.timeStamp)this.timeStamp = 0;
-        this.timeStamp+=100
-        timeStamp = this.timeStamp;
-
-        var loopCondition;
-        var t;
-        do{
-            loopCondition = false;
-            for (var k1=0; k1<this.rigidBodies.length; k1++){
-                for (var k2=k1+1; k2<this.rigidBodies.length; k2++){
-                    if(!this.rigidBodies[k1].geometry.inv_mass && !this.rigidBodies[k2].geometry.inv_mass) continue;
-                    t = this.getCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], 0).timeStamp+1 || timeStamp;
-                    if (t >= timeStamp+1000) continue;
-
-                    loopCondition = true;
-                    if (this.rigidBodies[k1].id=="poppy" && this.rigidBodies[k2].id=="Jeff"){
-                      console.log("wtf");
-                    }
-                    var collision = collisionTests.getCollition(this.rigidBodies[k1],this.rigidBodies[k2], t, timeStamp+3000); // upper limit
-                    if (collision){
-                        this.clearCollisionNotes(collision.bodyB, collision.timeStamp);
-                        this.clearCollisionNotes(collision.bodyA, collision.timeStamp);
-                        this.addCollisionNote(collision.bodyA, collision.bodyB, collision.timeStamp);
-
-                        collision.resolve();
-                        collision.correct();
-                    }
-                    else{
-                        this.addCollisionNote(this.rigidBodies[k1], this.rigidBodies[k2], timeStamp+2000)
-                    }
-
-                    if (collision.timeStamp < timeStamp+2000){
-                        k2--;
-                        continue;
-                    }
-                }
-            }
-        }while(loopCondition)
-    }
-    Scene.prototype.draw = function(timeStamp){
-
-        timeStamp = this.timeStamp;
-        this.ctx.setTransform(this.zoom,0,0,this.zoom,this.canvas.width*0.5,this.canvas.height*0.5);
-        this.ctx.translate(this.position.x, this.position.y);
-        this.ctx.clearRect(this.position.x - this.canvas.width*0.5/this.zoom,
-        this.position.y  - this.canvas.height*0.5/this.zoom,
-        this.canvas.width/this.zoom, this.canvas.height/this.zoom);
-        for(obj of this.rigidBodies){
-            this.drawEntity(obj, timeStamp);
-        }
-        for(obj of this.constraints){
-            this.drawConstraint(obj, timeStamp);
-        }
-    }
-    Scene.prototype.setZoom = function(zoom){
+    View.prototype.setZoom = function(zoom){
         if (zoom){
-            this.zoomFactor = zoom;
+            this.zoom = zoom;
         }
-        if (this.canvas.width < this.canvas.height)
-            this.zoom = this.zoomFactor*this.canvas.width / 1000;
-        else
-            this.zoom = this.zoomFactor*this.canvas.height / 1000;
-    }
-    Scene.prototype.setPosition = function(position){
-        if (position){
-            this.position = position.clone()
+        if (this.canvas.width < this.canvas.height){
+            this.pxScaler = this.zoom*this.canvas.width / 1000;
+        }
+        else{
+            this.pxScaler = this.zoom*this.canvas.height / 1000;
         }
     }
-    Scene.prototype.setSize = function(){
-        var boxInfo = this.canvas.getBoundingClientRect();
-        this.canvas.width	= boxInfo.width;
-        this.canvas.height	= boxInfo.height;
+    View.prototype.setPosition = function(position){
+        this.position = position.clone()
+    }
+    View.prototype.sizeAdjust = function(){
+        var box = this.canvas.getBoundingClientRect();
+        this.canvasPosition = new Vector(box.left, box.top)
+        this.canvas.width	= box.width;
+        this.canvas.height	= box.height;
         this.setZoom();
     }
-    Scene.prototype.zoom = function(change){
-        this.setZoom(this.zoomFactor+change);
-        this.draw(this.timeStamp);
-    }
-    Scene.prototype.move = function(vector){
-        this.setPosition(this.position.add(vector));
-        this.draw(this.timeStamp);
-    }
-    Scene.prototype.move = function(x, y){
-        this.move(new Vector(x, y));
-    }
-    Scene.prototype.addCollisionNote = function(bodyA, bodyB, timeStamp){
-        this.clearCollisionNotes(bodyA, bodyB);
-        var note = {}
-        note.bodyA = bodyA;
-        note.bodyB = bodyB;
-        note.timeStamp = timeStamp;
-        this.collisionNotes.push(note);
-        this.collisionNotes.sort(function(a, b) {return b.timeStamp - a.timeStamp;});
-    }
-    Scene.prototype.getCollisionNote = function(bodyA, bodyB, timeStamp){ // fetches note after timeStamp
-        var note;
-        for(var k=this.collisionNotes.length-1; k>0; k--){
-            note = this.collisionNotes[k];
-            if (note.timeStamp < timeStamp) continue;
-            if (note.bodyA == bodyA || note.bodyB == bodyA){
-                if (note.bodyA == bodyB || note.bodyB == bodyB){
-                    return note;
-                }
-            }
-        }
-        return false;
-    }
-    Scene.prototype.clearCollisionNotes = function(body, timeStamp = false){
-        var note;
-        for(var k=this.collisionNotes.length-1; k>0; k--){
-            note = this.collisionNotes[k];
-            if (timeStamp && note.timeStamp < timeStamp) continue;
-            if (note.bodyA == body || note.bodyB == body){
-                this.collisionNotes.splice(k, 1);
-            }
-        }
-    }
-    Scene.prototype.clearCollisionNotes = function(bodyA, bodyB, timeStamp = false){
-        var note;
-        for(var k=this.collisionNotes.length-1; k>0; k--){
-            note = this.collisionNotes[k];
-            if (timeStamp && note.timeStamp < timeStamp) continue;
-            if (note.bodyA == bodyA || note.bodyB == bodyA){
-                if (note.bodyA == bodyB || note.bodyB == bodyB){
-                    this.collisionNotes.splice(k, 1);
-                }
-            }
-        }
-    }
-    Scene.prototype.purgeOldCollisionNotes = function(timeStamp){
-        var note;
-        for(var k=0; k<this.collisionNotes.length-1; k--){
-            note = this.collisionNotes[k];
-            if (note.timeStamp > timeStamp) continue;
-            this.collisionNotes.splice(k, 1);
-        }
-    }
-    Scene.prototype.coordinateConvert = function(coordinate){
-        return coordinate.clone().subtract({x:this.canvas.width*0.5, y:this.canvas.height*0.5}
+    View.prototype.coordinateToScene = function(coordinate){
+        return coordinate.clone(
+        ).subtract( (new Vector(this.canvas.width, this.canvas.height)).scale(0.5)
+        ).subtract(this.canvasPosition
         ).scale(1/this.zoom
         ).subtract(this.position);
     }
-    Scene.prototype.bodyAtPoint = function(coordinate, timeStamp){
-
-        for (body of this.rigidBodies){
-            if (collisionTests.pointInGeometry(body.geometry, body.getPosition(timeStamp), body.getAngle(timeStamp), coordinate)) return body;
-        }
+    View.prototype.sceneToCoordinate = function(coordinate){
+        return coordinate.clone(
+        ).add(this.position
+        ).scale(this.zoom
+        ).add(this.canvasPosition
+        ).add( (new Vector(this.canvas.width, this.canvas.height)).scale(0.5) );
     }
-    Scene.prototype.drawEntity = function(entity, timeStamp){
+    View.prototype.draw = function(timeStamp){
+        this.ctx.save();
+        this.ctx.clearRect(0,0,canvas.width, canvas.height);
+        this.ctx.translate(this.position.x, this.position.y);
+        this.ctx.setTransform(this.pxScaler,0,0,this.pxScaler,this.canvas.width*0.5,this.canvas.height*0.5);
 
-        var position = entity.getPosition(timeStamp)
-        var angle = entity.getAngle(timeStamp);
-        this.drawGeometry(entity.geometry, position, angle)
-        this.drawPoint(position, "white");
-    }
-    Scene.prototype.drawConstraint = function(constraint, timeStamp){
-
-        if (constraint instanceof Rope || constraint instanceof ElasticRope){
-            this.ctx.beginPath();
-            var p1 = constraint.bodyA.getPosition(timeStamp
-            ).add(constraint.positionA.clone(
-            ).rotate(constraint.bodyA.getAngle(timeStamp))
-            );
-            var p2 = constraint.bodyB.getPosition(timeStamp
-            ).add(constraint.positionB.clone(
-            ).rotate(constraint.bodyB.getAngle(timeStamp))
-            );
-            this.ctx.moveTo(p1.x, p1.y)
-            this.ctx.lineTo(p2.x, p2.y)
-            this.ctx.strokeStyle = "yellow";
-            this.ctx.strokeWidth = 20;
-            this.ctx.stroke();
+        for(obj of this.scene.entities){
+            this.drawGeometry(obj.geometry, obj.getPosition(timeStamp), obj.getAngle(timeStamp));
         }
+
+        this.ctx.restore();
     }
     Scene.prototype.drawGeometry = function(geometry, position, angle){
         this.ctx.beginPath();
@@ -298,27 +149,7 @@ var physics = (function(){
         this.ctx.fillStyle = geometry.texture.surfaceColor;
         this.ctx.fill();
     }
-    Scene.prototype.drawPoint = function(position, color="black", size=1){
-        this.ctx.beginPath();
-        this.ctx.fillStyle=color;
-        this.ctx.fillRect(position.x-size, position.y-size, 2*size*this.zoom, 2*size*this.zoom);
-        this.ctx.fill();
-    }
 
-    var Material = function(){
-        this.density			= false;
-        this.staticFriction		= false;
-        this.dynamicFriction	= false;
-        this.restitution		= false;
-    }
-
-    var Texture = function(){
-        this.texture		= false;
-        this.textureSize	= false;
-        this.surfaceColor	= false;
-        this.borderWidth    = 0;
-        this.borderColor    = false;
-    }
 
     var Edge = function(pointA = new Vector(), pointB = new Vector()){
         this.pA 	= pointA;
