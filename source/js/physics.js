@@ -966,32 +966,34 @@ var physics = (function(){
     }
 
     var CollisionTests = function(){};
-    CollisionTests.prototype.pointInGeometry = function(geometry, position, angle, coordinate){
-        return this.pointInPoly(geometry, position, angle, coordinate);
-    }
-    CollisionTests.prototype.pointInPoly = function(polygon, position, angle, coordinate){
-        var edgeA = new Edge();
-        edgeA.pointA = coordinate.clone();
-        edgeA.pointB = position.clone();
-        for(var edgeB of polygon.iterateEdges())
-        {
-            edgeB.rotate(angle).add(position);
-            if (edgeA.intersect(edgeB)) return false;
+    CollisionTests.prototype.pointInGeometry = function(body, coordinate){
+        for(var edge of body.geometry.iterateEdges()){
+            edge.rotate(body.getAngle(timeStamp)
+            ).add(body.getPosition(timeStamp));
+
+            var normal = edge.normal();
+            var v = vertex.rotate(bodyA.getAngle(timeStamp)
+            ).add(bodyA.getPosition(timeStamp));
+            var distance = v.clone().subtract(edge.pA
+            ).dot(normal);
+
+            if (distance>0) return true
         }
-        return true
+        return false;
     }
-    CollisionTests.prototype.getClosestSupportingPoint = function(polygonA, polygonB, positionA, positionB, angleA, angleB){
+    CollisionTests.prototype.getClosestSupportingPoint = function(bodyA, bodyB, timeStamp){
         var data = {};
-        for(var edge of polygonB.iterateEdges()){
-            edge.rotate(angleB
-            ).add(positionB);
+        for(var edge of bodyB.geometry.iterateEdges()){
+            edge.rotate(bodyB.getAngle(timeStamp)
+            ).add(bodyB.getPosition(timeStamp));
+
             var normal = edge.normal();
             var d={};
-            for(var vertex of polygonA.iterateVertices()){
-                var v = vertex.rotate(angleA
-                ).add(positionA);
-                var distance = v.clone().subtract(edge.pointA
-                ).dot(normal); // not sure if normal is correct
+            for(var vertex of bodyA.geometry.iterateVertices()){
+                var v = vertex.rotate(bodyA.getAngle(timeStamp)
+                ).add(bodyA.getPosition(timeStamp));
+                var distance = v.clone().subtract(edge.pA
+                ).dot(normal);
                 if (d.distance==undefined || d.distance > distance)
                 {
                     d.normal = normal;
@@ -1004,6 +1006,22 @@ var physics = (function(){
             }
         }
         return data;
+    }
+    CollisionTests.prototype.timeForLinearDistance = function(bodyA, bodyB, distance, normal, timeStamp){
+        var relative_velocity = bodyB.getVelocity(timeStamp).subtract(bodyA.getVelocity(timeStamp));
+        var time = distance/relative_velocity.dot(normal);
+        if (!isFinite(time)) return false;
+        return time;
+    }
+    CollisionTests.prototype.radiusCollide = function(bodyA, bodyB, timeStamp){
+        var distance_vector = bodyB.getPosition(timeStamp).subtract(bodyA.getPosition(timeStamp));
+        var normal = distance_vector.clone().normalize();
+        var radious = bodyA.geometry.radious - bodyB.geometry.radious;
+        if (distance <= radious) return true;
+        var distance = distance_vector.length() - radious;
+        var time = this.timeForLinearDistance(bodyA, bodyB, distance, normal, timeStamp);
+        if (time === false || time<0) return false;
+        return time;
     }
     CollisionTests.prototype.SAT = function(bodyA, bodyB, timeStamp){
         var positionA = bodyA.getPosition(timeStamp);
@@ -1032,165 +1050,39 @@ var physics = (function(){
         collision.offset = dB.normal.clone().scale(dB.distance);
         return collision;
     }
-    CollisionTests.prototype.conservativeAdvancement = function(collision, timeStamp){
-        // linear values
-        var linearV = collision.bodyA.getVelocity(timeStamp).subtract(collision.bodyB.getVelocity(timeStamp)).dot(collision.normal);
-        var linearA = collision.bodyA.getAcceleration(timeStamp).subtract(collision.bodyB.getAcceleration(timeStamp)).dot(collision.normal);
+    CollisionTests.prototype.testCollition = function(bodyA, bodyB, timeStamp){
+        var timeStamp_local = timeStamp;
 
-        var pointA = collision.point.clone().subtract(collision.bodyA.getPosition(timeStamp));
-        var pointB = collision.point.clone().add(collision.offset).subtract(collision.bodyB.getPosition(timeStamp));
+        var time = radiusCollide(bodyA, bodyB, timeStamp);
+        if (time === false) return false;
+        if (time !== true) timeStamp_local += time; // bad ckeck, can be infinate
 
-        var factor;
-        factor = 1 - (pointA.length() / collision.bodyA.geometry.radious);
-        var subV_A = factor * Math.abs(collision.bodyA.getAngVelocity(timeStamp)) * collision.bodyA.geometry.radious;
-        if (isNaN(subV_A) || !isFinite(subV_A)) subV_A = 0;
-        var subT_A = factor * collision.bodyA.geometry.radious/subV_A;
-        if (isNaN(subT_A) || !isFinite(subT_A)) subT_A = 0;
-        var subA_A = -subV_A/subT_A;
-        if (isNaN(subA_A) || !isFinite(subA_A)) subA_A = 0;
-
-        factor = 1 - (pointB.length() / collision.bodyB.geometry.radious);
-        var subV_B = factor * Math.abs(collision.bodyB.getAngVelocity(timeStamp)) * collision.bodyB.geometry.radious;
-        if (isNaN(subV_B) || !isFinite(subV_B)) subV_B = 0;
-        var subT_B = factor * collision.bodyB.geometry.radious/subV_B;
-        if (isNaN(subT_B) || !isFinite(subT_B)) subT_B = 0;
-        var subA_B = -subV_B/subT_B;
-        if (isNaN(subA_B) || !isFinite(subA_B)) subA_B = 0;
-
-        distance = collision.offset.dot(collision.normal);
-
-        var v = linearV + subV_A - subV_B;
-        var a = linearA + subA_A - subA_B;
-        var time;
-        while(1)
-        {
-            if (a){
-              time = (Math.sqrt(v*v - 2*a*distance)-v)/a;
-            }
-            else if (v){
-              time = distance/v
-            }
-            else{
-              return false;
-            }
-
-
-            if (subT_A && (isNaN(time) || time > subT_A) && (!subT_B || subT_A < subT_B)){
-                v = linearV - subV_B;
-                a = linearA - subA_B;
-                subT_A = false;
-                distance -= collision.bodyA.geometry.radious - pointA.length();
-                continue
-            }
-            if (subT_B && (isNaN(time) || time > subT_B)){
-                v = linearV + subV_A;
-                a = linearA + subA_A;
-                subT_B = false;
-                distance -= collision.bodyB.geometry.radious - pointB.length();
-                continue
-            }
-
-            if (isNaN(time) || time<0) break;
-
-            return time*1000;
-        }
-        return false;
-    }
-    CollisionTests.prototype.getCollition = function(bodyA, bodyB, timeStamp, max){
-        var localTimeStamp = timeStamp;
-        var collision;
-        var time;
         var distance;
-        var timespan;
+        var collision;
 
         for(var k = 0; k<500; k++){
-            collision = this.SAT(bodyA, bodyB, localTimeStamp)
+            collision = this.SAT(bodyA, bodyB, timeStamp_local)
             distance = collision.offset.dot(collision.normal);
-            if (Math.abs(distance) < 0.005){
-              if (distance>=0){
-                  collision.offset.scale(0);
-              }
-              else{
-                  collision.offset.scale(1.1);
-              }
-              return collision;
+            if (Math.abs(distance) < 0.05){
+                return collision;
             }
             if (distance<0){
-              if (time){
-                  time*=0.5;
-                  localTimeStamp -= time;
-                  continue;
-              }
-              else{
-                  return collision; // for 2 consecative collitions within 1 point
-              }
-            }
-
-            if (localTimeStamp > max) return false;
-
-            if (time == (time = this.conservativeAdvancement(collision, localTimeStamp))) throw "something is wrong!"; // why is this a thing? **fix
-
-            if (bodyA.geometry.radious + bodyB.geometry.radious > bodyA.getPosition(localTimeStamp).subtract(bodyB.getPosition(localTimeStamp)).length() ) {
-                var rotationTimeMax = 0.25*1000*minOfTwo(Math.abs(bodyA.geometry.minimalAngle),Math.abs(bodyB.geometry.minimalAngle))
-                /(Math.abs(bodyA.getAngVelocity(localTimeStamp)) + Math.abs(bodyB.getAngVelocity(localTimeStamp)));
-
-                if (!time || Math.abs(time) > rotationTimeMax){
-                  time = rotationTimeMax;
+                if (time){ // binary seach
+                    timeStamp_local -= time*=0.5;
+                    continue;
+                }
+                else{
+                    return collision;
                 }
             }
-            if (!time) return false;
 
-            timespan = minOfTwo(collision.bodyA.getNextSnapshotTime(localTimeStamp), collision.bodyB.getNextSnapshotTime(localTimeStamp));
-            if (!timespan || localTimeStamp+time < timespan) localTimeStamp+=time;
-            else localTimeStamp = timespan;
-
-            if (localTimeStamp <= timeStamp) return false;
+            time = this.timeForLinearDistance(collision.bodyA, collision.bodyB, collision.offset.length(), collision.normal, timeStamp_local);
+            if (time === false) return false;
+            timeStamp_local += time;
+            if (timeStamp_local <= timeStamp) return false;
         }
-        throw "infinate loop conditions";
     }
 
-
-    var collisionTests = new CollisionTests();
-    // helper functions
-    function maxOfTwo(value1, value2){
-        if (!value1){
-          if (!value2) return false;
-          return value2;
-        }
-        else if (!value2) return value1
-        else{
-          if (value1<value2) return value1;
-          return value2;
-        }
-    }
-    function minOfTwo(value1, value2){
-        if (!value1){
-          if (!value2) return false;
-          return value2;
-        }
-        else if (!value2) return value1
-        else{
-          if (value1>value2) return value1;
-          return value2;
-        }
-    }
-    function getTimeForDist(distance, velocity, acceleration){
-        var v = velocity;
-        var a = acceleration;
-        var d = distance;
-        var t;
-        if (!d) return false;
-        if (a){
-          t = (Math.sqrt(v*v - 2*a*d)-v)/a;
-          if (isNaN(t)) return false;
-          return t*1000;
-        }
-        if (v){
-          t = d/v
-          return t*1000;
-        }
-        return false;
-    }
     function loopRadian(radian){
         if (radian > 2*Math.PI) radian%=2*Math.PI;
         if (radian < 0) radian=2*Math.PI + (radian%(2*Math.PI));
