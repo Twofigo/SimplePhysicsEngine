@@ -65,19 +65,41 @@ var physics = (function(){
         return Math.sqrt(this.squareLength());
     }
 
+    var createScene(){
+        return new Scene();
+    };
+
     var Scene = function(){
         this.entities	= [];
+
+        this.views = [];
     }
     Scene.prototype.addEntity = function(entity){
         this.rigidBodies.push(entity);
     }
+    Scene.prototype.createView(canvas){
+        var view = new View(canvas);
+        this.views.push(view);
+        return view;
+    }
     Scene.prototype.update = function(timeStamp){
-
+        for(view of this.views){
+            view.draw(timeStamp);
+        }
+    }
+    Scene.prototype.start = function(){
+        var self = this;
+        var loop = function(timeStamp) {
+            self.update(timeStamp);
+            window.requestAnimationFrame(loop)
+        };
+        window.requestAnimationFrame(loop);
     }
 
+
     var View = function(canvas, scene){
-        this.canvas;
-        this.ctx;
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext("2d");
         this.scene = scene;
 
         this.canvasPosition;
