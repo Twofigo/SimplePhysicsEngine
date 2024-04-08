@@ -225,8 +225,8 @@ var physics = (function(){
             this.ctx.moveTo(p1.x * this.zoom, p1.y * this.zoom)
             this.ctx.lineTo(p2.x * this.zoom, p2.y * this.zoom)
             
-            this.ctx.strokeStyle = "yellow";
-            this.ctx.strokeWidth = 20;
+            this.ctx.strokeStyle = "#22BBBB";
+            this.ctx.lineWidth = 4;
             this.ctx.stroke();
         }
     }
@@ -566,7 +566,7 @@ var physics = (function(){
         ElasticJoint.prototype.resolve.call(this);
     }
     
-    var Rope = function(bodyA, positionA, bodyB, positionB, stiffness, length){
+    var Rope = function(bodyA, positionA, bodyB, positionB, stiffness, length=200){
         ElasticRope.call(this, bodyA, positionA, bodyB, positionB, stiffness, length);
     }
     Rope.prototype = Object.create(ElasticRope.prototype);
@@ -1030,6 +1030,7 @@ var physics = (function(){
         ElasticRope: ElasticRope,
         Rope: Rope,
         RigidBody: RigidBody,
+        Texture: Texture,
         default_texture: default_texture,
         default_material: default_material,
     };

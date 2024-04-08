@@ -2,10 +2,13 @@ var ins;
 var g;
 function setup()
 {
+	var texture = new physics.Texture();
+	texture.surfaceColor = "#002299";
+
     ins = new physics.Scene()
     
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var thing = new physics.Polygon();
+	thing.setVertices([
 	{x:-14,y:20},
 	{x:14,y:20},
 	{x:20,y:0},
@@ -13,52 +16,78 @@ function setup()
 	{x:-14,y:-20},
 	{x:-20,y:0},
 	]);
-	var obj = new physics.RigidBody()
-	obj.geometry = geo;
-	obj.setPosition(0,0,0);
-	obj.setVelocity(-50,0,8);
-    obj.compile();
-	ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(0,100,0);
-	obj.setVelocity(-10,20,0);
-    obj.compile();
-	ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(0,-100,0);
-	obj.setVelocity(0,65,-5);
-    obj.compile();
-	ins.add(obj);
+
 	
-	var geo = new physics.Polygon();
-	geo.setVertices([
+	var last = new physics.RigidBody();
+    last.setPosition(0,-300); 
+	for (var k = 0; k < 6; k++){
+		var obj = new physics.RigidBody();
+		obj.texture = texture;
+		obj.geometry = thing.clone();
+		obj.setPosition((k-4)*50,-100,k*800);
+		obj.setVelocity(0,0,0);
+		obj.compile();
+		ins.add(obj);
+
+		this.constraint = new physics.Rope(obj, new physics.Vector(10,0), last, new physics.Vector(-10,0),100, 100);
+    	ins.add(this.constraint);
+
+		last = obj;
+	}
+	
+	var box = new physics.Polygon();
+	box.setVertices([
 	{x:-20,y:-20},
 	{x:-20,y:20},
 	{x:20,y:20},
 	{x:20,y:-20},
 	]);
-	var obj = new physics.RigidBody()
-	obj.geometry = geo;
-	obj.setPosition(-200,0,0.5);
-	obj.setVelocity(0,0,0);
-	obj.compile();
-    ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(-100,0,0.5);
-	obj.compile();
-    ins.add(obj);
-    
-    var obj = new physics.RigidBody()
-	obj.geometry = geo.clone();
-	obj.setPosition(200,0,0.5);
-	obj.compile();
-    ins.add(obj);
+
+	for (var k = 0; k < 8; k++){
+		var obj = new physics.RigidBody()
+		obj.texture = texture;
+		obj.geometry = box.clone();
+		obj.setPosition((k-4)*50,100,k*800);
+		obj.setVelocity(0,0,0);
+		obj.compile();
+		ins.add(obj);
+	}
+
+	var plank = new physics.Polygon();
+	box.setVertices([
+	{x:-80,y:-10},
+	{x:-80,y:10},
+	{x:80,y:10},
+	{x:80,y:-10},
+	]);
+
+	for (var k = 0; k < 3; k++){
+		var obj = new physics.RigidBody()
+		obj.texture = texture;
+		obj.geometry = box.clone();
+		obj.setPosition((k-2)*50,0,10);
+		obj.setVelocity(0,0,0);
+		obj.compile();
+		ins.add(obj);
+	}
+
+	var bigbox = new physics.Polygon();
+	bigbox.setVertices([
+	{x:-40,y:-40},
+	{x:-40,y:40},
+	{x:40,y:40},
+	{x:40,y:-40},
+	]);
+
+	for (var k = 0; k < 4; k++){
+		var obj = new physics.RigidBody()
+		obj.geometry = bigbox.clone();
+		obj.texture = texture;
+
+		obj.setPosition((k-2)*100,200,k*800);
+		obj.compile();
+		ins.add(obj);
+	}
 	
     // floor;
 	var geo = new physics.Polygon();
@@ -106,20 +135,9 @@ function setup()
     tracker.set(document.getElementById("gameboard"));
     tracker.enable();
     
-
-    
-    this.constraint = new physics.Rope(ins.rigidBodies[2], new physics.Vector(), ins.rigidBodies[3], new physics.Vector(),100);
-    ins.add(this.constraint);
-    
-    var obj = new physics.RigidBody();
-    obj.setPosition(0,100);
-    this.constraint = new physics.Rope(obj, new physics.Vector(), ins.rigidBodies[0], new physics.Vector(),100);
-    ins.add(this.constraint);
-    
     g = new Grabber();
     tracker.addListener("move", function(d){g.move(d)});
     tracker.addListener("m1", function(d){g.grabAndDrop(d)});
-    
     
 	window.requestAnimationFrame(mainloop);
 }
