@@ -1,7 +1,7 @@
 # SimplePhysicsEngine
 For an online demo, go to: https://twofigo.github.io/SimplePhysicsEngine/source/
 
-I wrote this simple 3D convex rigid body physics engine because the algorithms were fascinating. It's been implemented entirely in pure JavaScript+ HTML+ CSS for two summers.
+I wrote this simple 2D convex rigid body physics engine because the algorithms were fascinating. It's been implemented entirely in pure JavaScript+ HTML+ CSS for two summers.
 
 The maths are based on a series of wonderful articles by Chris Hecker from 1996, along with the calculation of rotational inertia of polygons taken from the point-mass inertia equation in a physics book I had.
 http://www.chrishecker.com/Rigid_body_dynamics
